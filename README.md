@@ -38,7 +38,7 @@ Watch the full series on YouTube to see the methodology in action.
 | Episode | Title | Link |
 |---------|-------|------|
 | 01 | Idea Stage Decisions for Business Requirement Document | [Watch](https://www.youtube.com/watch?v=ldgh_npOWvA) |
-| 02 | *Coming Soon* | |
+| 02 | Creating Your Business Requirements Document | [Watch](https://youtu.be/LWgH7NU9UbY) |
 | 03 | *Coming Soon* | |
 | 04 | *Coming Soon* | |
 | 05 | *Coming Soon* | |
@@ -70,7 +70,7 @@ Silent decisions create the gap between "AI built me something fast" and "AI bui
 
 1. Clone this repository
 2. Watch Episode 01 to understand the methodology
-3. Explore the `episodes/episode01/` folder for prompts and decision records
+3. Explore the `episodes` folder for prompts and decision records
 4. Apply the same approach to your own projects
 
 ## Connect
