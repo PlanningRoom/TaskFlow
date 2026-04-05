@@ -40,8 +40,9 @@ Watch the full series on YouTube to see the methodology in action.
 | 01 | Idea Stage Decisions for Business Requirement Document | [Watch](https://youtu.be/ldgh_npOWvA) |
 | 02 | Creating Your Business Requirements Document | [Watch](https://youtu.be/LWgH7NU9UbY) |
 | 03 | Product Decisions for Your PRD | [Watch](https://youtu.be/KLDQ7fXXfXg) |
-| 04 | *Coming Soon* | |
+| 04 | Creating Your Product Requirements Document (PRD) | [Watch](https://youtu.be/mlgKZJMaax0) |
 | 05 | *Coming Soon* | |
+| 06 | *Coming Soon* | |
 
 ## Learn More
 
