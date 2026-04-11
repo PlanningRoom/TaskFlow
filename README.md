@@ -41,7 +41,7 @@ Watch the full series on YouTube to see the methodology in action.
 | 02 | Creating Your Business Requirements Document | [Watch](https://youtu.be/LWgH7NU9UbY) |
 | 03 | Product Decisions for Your PRD | [Watch](https://youtu.be/KLDQ7fXXfXg) |
 | 04 | Creating Your Product Requirements Document (PRD) | [Watch](https://youtu.be/mlgKZJMaax0) |
-| 05 | *Coming Soon* | |
+| 05 | Design Requirements and UI Mockup | [Watch](https://youtu.be/ZR8xqsjmofY) |
 | 06 | *Coming Soon* | |
 
 ## Learn More
