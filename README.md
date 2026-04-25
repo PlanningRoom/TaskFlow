@@ -43,7 +43,8 @@ Watch the full series on YouTube to see the methodology in action.
 | 04 | Creating Your Product Requirements Document (PRD) | [Watch](https://youtu.be/mlgKZJMaax0) |
 | 05 | Design Requirements and UI Mockup | [Watch](https://youtu.be/ZR8xqsjmofY) |
 | 06 | Technical Requirements and ADRs | [Watch](https://youtu.be/kHDyfIAcyy4) |
-| 07 | *Coming Soon* | |
+| 07 | Create an Implementation Plan | [Watch](https://youtu.be/XYrN46X-uz8) |
+| 08 | *Coming Soon* | |
 
 ## Learn More
 
