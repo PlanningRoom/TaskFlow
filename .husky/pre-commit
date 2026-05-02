@@ -1,0 +1,9 @@
+#!/usr/bin/env sh
+# Frontend: Biome on staged TS/JS via lint-staged (ADR 082).
+pnpm exec lint-staged
+
+# Backend + secret scan: Python `pre-commit` framework (ADR 082).
+# Skipped silently if `pre-commit` is not installed locally; CI is the safety net.
+if command -v pre-commit >/dev/null 2>&1; then
+  pre-commit run --hook-stage pre-commit
+fi

@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: taskflow
+      POSTGRES_PASSWORD: taskflow
+      POSTGRES_DB: taskflow_test
+    tmpfs:
+      - /var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow -d taskflow_test"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  api-test:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://taskflow:taskflow@db:5432/taskflow_test
+      APP_ENV: test
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["pytest", "-q"]
+    volumes:
+      - ./apps/api:/app

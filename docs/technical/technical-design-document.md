@@ -241,8 +241,8 @@ taskflow/
 │       │   └── integration/
 │       ├── Dockerfile                # arm64, python:3.12-slim
 │       ├── alembic.ini
-│       ├── pyproject.toml
-│       └── ruff.toml
+│       ├── pyproject.toml             # deps + [tool.ruff] + [tool.mypy] (ADR 078)
+│       └── uv.lock                    # uv-managed dep lock
 │
 ├── packages/                         # Shared across apps
 │   ├── api-types/                    # Generated from OpenAPI
@@ -476,14 +476,16 @@ All images are built `linux/arm64` to match the `t4g.small` host (ADR 038).
 
 ### 7.1 FastAPI application structure
 
-`apps/api/taskflow/main.py` is the FastAPI entry point. At startup it:
+`apps/api/taskflow/main.py` is the FastAPI entry point. The lifespan context manager runs at startup and shutdown:
 
 1. Loads settings via `pydantic-settings` (env vars populated from Parameter Store by the entrypoint).
-2. Creates the SQLAlchemy async engine.
+2. Initializes the SQLAlchemy async engine (`taskflow.db.session.init_engine()`); the engine and session factory are module-level singletons created here and disposed on shutdown via `dispose_engine()`.
 3. Runs Alembic migrations to the latest head (fails fast on migration errors).
 4. Starts APScheduler for periodic jobs (ADR 069).
 5. Connects the `broadcaster` instance to Postgres for real-time fan-out.
 6. Mounts routers under `/api/v1` and the WebSocket endpoint at `/ws`.
+
+Routes and middleware are registered at module import (FastAPI's expected pattern); only resources that need explicit lifecycle management — the DB engine, the scheduler, the broadcaster — are created in the lifespan.
 
 ### 7.2 Layered architecture
 
@@ -777,13 +779,35 @@ All error responses follow:
 
 `code` is machine-readable and stable. The frontend maps codes to translated copy. Validation failures (422) populate `fields`.
 
-Global exception handlers in `taskflow/errors.py` convert internal exceptions and Pydantic `ValidationError` into this envelope. Unhandled exceptions produce a 500 and are logged at ERROR level (ADR 076).
+Field codes are canonical SCREAMING_SNAKE strings, not Pydantic's raw error type names. The mapping table lives in `taskflow/errors.py` (`_PYDANTIC_TYPE_TO_CODE`) and includes:
+
+| Pydantic `type` | Canonical `code` |
+|-----------------|------------------|
+| `missing`, `missing_argument`, `value_required` | `REQUIRED` |
+| `string_type`, `int_type`, `bool_type`, `*_type`, `*_parsing` | `INVALID_TYPE` |
+| `string_too_short` | `TOO_SHORT` |
+| `string_too_long` | `TOO_LONG` |
+| `string_pattern_mismatch`, `string_*` (default) | `INVALID_FORMAT` |
+| `enum`, `literal_error` | `INVALID_CHOICE` |
+| `json_invalid`, `json_type` | `INVALID_JSON` |
+| `url_*` | `INVALID_URL` |
+| `uuid_*` | `INVALID_UUID` |
+| `datetime_*` | `INVALID_DATETIME` |
+| `date_*` | `INVALID_DATE` |
+| `greater_than`, `less_than`, `*_equal`, `multiple_of`, `finite_number` | `OUT_OF_RANGE` |
+| `value_error` | `INVALID` |
+| anything else | upper-cased Pydantic type as a fallback |
+
+Adding a new Pydantic-driven code requires updating the table here and in `errors.py` together.
+
+Global exception handlers in `taskflow/errors.py` convert internal exceptions and Pydantic `ValidationError` into this envelope. Unhandled exceptions produce a 500 and are logged at ERROR level by the `RequestContextMiddleware` with full request context (`request_id`, `path`, `method`, `duration_ms`, `exception`). The catch-all handler does not log a second time — single ERROR record per failed request.
 
 ### 9.3 OpenAPI and type generation
 
 FastAPI generates an OpenAPI 3.1 document from the Pydantic request/response models. This document is:
 
-- Exposed at `/api/v1/openapi.json` (accessible only from localhost / authed admin; not publicly routed in prod).
+- Exposed by FastAPI at `/api/v1/openapi.json` unconditionally; the Swagger UI at `/api/v1/docs` is suppressed when `APP_ENV=production`.
+- Gated against external access in production by nginx (Phase E1 / ADR 083) — the nginx routing block restricts `/api/v1/openapi.json` and `/api/v1/docs` to localhost / authed admin. Inside the trust boundary the schema remains available for codegen.
 - Consumed by `openapi-typescript` in the frontend build to produce `packages/api-types/schema.d.ts`.
 - Reviewed in CI — a diff against the committed types is treated as a deliberate API change.
 

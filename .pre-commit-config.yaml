@@ -1,0 +1,29 @@
+# ADR 082 splits pre-commit work:
+#   - Husky + lint-staged (root package.json) handle Biome on .ts/.tsx/.js/.jsx/.json
+#   - This file handles Ruff for Python and detect-secrets across staged content
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^apps/api/.*\.py$
+      - id: ruff-format
+        files: ^apps/api/.*\.py$
+
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: ["--baseline", ".secrets.baseline"]
+        exclude: ^(\.secrets\.baseline|pnpm-lock\.yaml|package-lock\.json)$
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=500"]

@@ -90,7 +90,7 @@ Permissions operate on two layers:
 - Expired or missed invitations can be **resent** by Owners and Admins.
 - Invitation revocation is not supported.
 - Owners and Admins can view invitation status: **pending**, **accepted**, or **expired**.
-- If the invited email belongs to an existing TaskFlow user, accepting the invitation adds them to the workspace with the assigned role — no new account is created.
+- If the invited email belongs to an existing TaskFlow user, accepting the invitation adds them to the workspace with the assigned role — no new account is created. Because each user belongs to exactly one workspace (§4.1), accepting an invitation **replaces** the existing user's workspace membership; their access to the previous workspace ends immediately.
 - If the invited email does not have an account, accepting the invitation prompts account creation, after which the user joins the workspace.
 
 ### 3.4 First-Run Experience

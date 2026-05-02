@@ -21,15 +21,60 @@ Throughout this series, I build a task management app called **TaskFlow** using 
 ## Repository Structure
 
 ```
-├── episodes/
-│   ├── episode01/
-│   ├── episode02/
-│   └── ...
-├── docs/
-│   └── business/
-│      └── decisions/
+├── apps/
+│   ├── api/                # FastAPI backend (Python 3.12)
+│   └── web/                # React + Vite SPA (TypeScript)
+├── packages/
+│   ├── api-types/          # TS types generated from OpenAPI
+│   └── config/             # Shared TS config
+├── infra/                  # CloudFormation, nginx, EC2 user-data
+├── docs/                   # BRD / PRD / DRD / TDD + ADRs + planning
+├── episodes/               # YouTube series prompts and decisions
+├── .github/workflows/      # CI / CD
+├── docker-compose.yml      # Dev stack (db + mailhog + api + web)
+├── Makefile
 └── README.md
 ```
+
+## Building TaskFlow Locally
+
+TaskFlow is a workspace task-management application built across the YouTube series. The build follows the plan in [docs/planning/implementation-plan.md](docs/planning/implementation-plan.md); progress is tracked in [docs/planning/implementation-status.md](docs/planning/implementation-status.md).
+
+### Prerequisites
+
+- Docker Desktop (or compatible engine) with `docker compose`
+- Node.js 20+ and `pnpm` 9+ (`corepack enable && corepack prepare pnpm@latest --activate`)
+- Python 3.12+ (only required for native iteration outside Docker)
+
+### Quickstart
+
+```bash
+cp .env.example .env.local
+pnpm install
+make dev
+```
+
+`make dev` starts Postgres, MailHog, the FastAPI API, and the Vite dev server. Useful URLs:
+
+- Web: http://localhost:5173
+- API: http://localhost:8000/health
+- MailHog UI: http://localhost:8025
+
+### Common tasks
+
+| Command | What it does |
+|---------|--------------|
+| `make dev` | Start the dev stack |
+| `make down` | Stop and remove containers |
+| `make migrate` | Run Alembic `upgrade head` (once Phase B2 lands) |
+| `make seed` | Load the "Aurora Studio" seed data (Phase E4) |
+| `make lint` | Biome (TS/JS) + Ruff (Python) |
+| `make typecheck` | `tsc -b` + `mypy` |
+| `make test` | Backend + frontend unit / integration tests |
+
+Pre-commit hooks (`pre-commit install`) run Biome, Ruff, and a secret scan on staged files.
+
+
 
 ## YouTube Series
 
@@ -44,7 +89,8 @@ Watch the full series on YouTube to see the methodology in action.
 | 05 | Design Requirements and UI Mockup | [Watch](https://youtu.be/ZR8xqsjmofY) |
 | 06 | Technical Requirements and ADRs | [Watch](https://youtu.be/kHDyfIAcyy4) |
 | 07 | Create an Implementation Plan | [Watch](https://youtu.be/XYrN46X-uz8) |
-| 08 | *Coming Soon* | |
+| 08 | Build Part 1 | [Watch](https://youtu.be/HLzz5d-GK2w) |
+| 09 | *Coming Soon* | |
 
 ## Learn More
 

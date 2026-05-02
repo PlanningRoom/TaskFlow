@@ -1,1 +1,41 @@
 .DS_Store
+
+# Node
+node_modules/
+.pnpm-store/
+.turbo/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+*.pem
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# OS
+Thumbs.db
+
+# Build artifacts
+apps/web/src/api/generated/
+packages/api-types/dist/

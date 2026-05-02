@@ -89,15 +89,15 @@ Each phase below includes a goal, the concrete tasks, the deliverables, the defi
 - Initialize pnpm workspaces monorepo with Turborepo (ADR 026). Layout per TDD §4.
 - Create `apps/web`, `apps/api`, `packages/api-types`, `packages/config`, `infra/`, `.github/workflows/` directories per TDD §4 tree.
 - Add `pnpm-workspace.yaml`, `turbo.json`, root `package.json`, `Makefile`.
-- Configure Biome (ADR 078) with shared config in `packages/config`. Configure Ruff for `apps/api`.
-- Set up Python 3.12+ with `pyproject.toml` (ADR 028); configure `uv` or `pip-tools` for dependency management.
+- Configure Biome (ADR 078): root `biome.json` extends `packages/config/biome.base.json` so other workspaces can share the base. Configure Ruff for `apps/api` via `[tool.ruff]` in `pyproject.toml` (ADR 078).
+- Set up Python 3.12+ with `pyproject.toml` (ADR 028); manage deps with `uv` (lockfile committed at `apps/api/uv.lock`).
 - Author `docker-compose.yml` (dev), `docker-compose.test.yml` (integration), `docker-compose.prod.yml` (placeholder) per TDD §15.1.
 - Author `apps/web/Dockerfile` and `apps/api/Dockerfile` (stubs OK; both `linux/arm64`, ADR 038).
 - Add MailHog service to `docker-compose.yml` (TDD §15.1).
 - Author `.env.example` covering all runtime config keys.
 - Set up GitHub Actions `ci.yml` with two initial jobs: `lint` (Biome + Ruff) and `typecheck` (placeholder until apps exist).
 - Configure Dependabot and CodeQL on the repo (ADR 086).
-- Configure pre-commit hooks (ADR 082): Biome on TS/JS, Ruff on Python, secret-scan.
+- Configure pre-commit hooks (ADR 082): Husky + lint-staged for Biome on staged TS/JS; `pre-commit` framework for Ruff on Python and `detect-secrets` on staged content.
 - Add root `README.md` (development quickstart).
 
 **Deliverables:** A repo where `make dev` boots the dev stack with empty placeholder services, and `make lint` / `make typecheck` succeed on the empty apps.
@@ -211,7 +211,7 @@ Each phase below includes a goal, the concrete tasks, the deliverables, the defi
 - `POST /api/v1/auth/login` — verifies password, creates session, sets cookies. Audit log: `auth.login.success` / `auth.login.failure`. Rate-limited (deferred wiring; decorator placeholder for E1).
 - `POST /api/v1/auth/logout` — deletes session row, clears cookies. Audit log: `auth.logout`.
 - `POST /api/v1/auth/password-reset/request` (ADR 049) — no-enumeration response, generates token (1h expiry, single-use), enqueues email via BackgroundTasks (email send wired in D2). Audit log: `auth.password_reset.requested`.
-- `POST /api/v1/auth/password-reset/confirm` (ADR 049) — verifies token, updates password hash, revokes all sessions for the user. Audit log: `auth.password_reset.confirmed`.
+- `POST /api/v1/auth/password-reset/confirm` (ADR 049) — verifies token, updates password hash, revokes all sessions for the user. Audit log: `auth.password_reset.completed` (per ADR 084).
 - `GET /api/v1/auth/me` — returns the current user DTO including role and workspace.
 - `PATCH /api/v1/auth/me` — update profile fields on the current user (display name only at v1; email is read-only per PRD §20.1). Audit log: `auth.profile.updated`.
 - `POST /api/v1/auth/change-password` — authenticated password change (screen inventory §3.11). Verifies current password, hashes and stores new password, revokes all other sessions for the user. Audit log: `auth.password.changed`.

@@ -1,0 +1,7 @@
+# Production topology placeholder. Filled out in Phase I2.
+# Will include: nginx (public entry, TLS via certbot), api, web (static via nginx),
+# db (Postgres 16 with persistent volume), and shared private networks.
+services:
+  placeholder:
+    image: alpine:3.20
+    command: ["true"]

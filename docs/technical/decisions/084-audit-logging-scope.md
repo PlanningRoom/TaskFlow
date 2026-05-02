@@ -17,17 +17,22 @@ Events logged:
 
 | Event Type | Trigger |
 |---|---|
+| `auth.signup` | New workspace + Owner created via sign-up |
 | `auth.login.success` | User successfully logs in |
 | `auth.login.failure` | Login attempt fails (bad password, unknown email, etc.) |
 | `auth.logout` | User logs out or session expires |
 | `auth.password_reset.requested` | Password reset token requested |
 | `auth.password_reset.completed` | Password reset token consumed |
 | `auth.password_changed` | Password changed while logged in |
+| `auth.profile.updated` | Authenticated profile mutation (display name) |
 | `workspace.user.role_changed` | Admin/Owner changes another user's role |
 | `workspace.user.removed` | Owner removes a user |
 | `workspace.invitation.sent` | Invitation sent |
+| `workspace.invitation.resent` | Invitation token regenerated and re-emailed |
 | `workspace.invitation.accepted` | Invitation accepted |
 | `account.deleted` | User deletes own account |
+
+Naming convention: `{domain}.{subaction}` where subaction may be a single token (`account.deleted`, `auth.password_changed`) or `{noun}.{verb}` for compound subjects (`auth.password_reset.requested`, `workspace.user.role_changed`). The `event_type` column has a CHECK constraint pinning the table above; adding a new event requires a migration that extends the constraint.
 
 Schema:
 
