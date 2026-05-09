@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
 **Last Updated:** 2026-05-09
-**Current Phase:** Phase C1 — Workspace, Members, Invitations, Labels (next)
+**Current Phase:** Phase D1 — Real-Time / WebSocket (next)
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -37,14 +37,14 @@ Refer to the implementation plan for the goal, definition of done, and reference
 |------|-------|--------|----------|-------------|---------|
 | A | Foundation | 1 | 1 | 0 | 0 |
 | B | Backend Core | 4 | 4 | 0 | 0 |
-| C | Backend Domain | 8 | 0 | 0 | 0 |
+| C | Backend Domain | 8 | 8 | 0 | 0 |
 | D | Backend Real-Time & Async | 2 | 0 | 0 | 0 |
 | E | Backend Hardening | 4 | 0 | 0 | 0 |
 | F | Frontend Foundation | 4 | 0 | 0 | 0 |
 | G | Frontend Screens | 8 | 0 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 0 | 0 | 0 |
 | I | E2E, Infra, Deploy | 6 | 0 | 0 | 0 |
-| **Total** | | **42** | **5** | **0** | **0** |
+| **Total** | | **42** | **13** | **0** | **0** |
 
 ---
 
@@ -127,77 +127,77 @@ Refer to the implementation plan for the goal, definition of done, and reference
 
 ### Part C — Backend Domain
 
-#### Phase C1 — Workspace, Members, Invitations, Labels `[ ] Not started`
-- [ ] Workspace endpoints (`GET`, `PATCH /workspaces/me`)
-- [ ] Member endpoints (list, role change, remove)
-- [ ] Member removal anonymizes user + unassigns tasks + deletes sessions
-- [ ] Invitation endpoints (list, send, resend) with email queueing
-- [ ] Label endpoints (CRUD) with palette validation
-- [ ] Label deletion cascades to `task_labels`
-- [ ] Integration tests across roles
-- [ ] Audit log entries for all mutations
+#### Phase C1 — Workspace, Members, Invitations, Labels `[x] Complete`
+- [x] Workspace endpoints (`GET`, `PATCH /workspaces/me`)
+- [x] Member endpoints (list, role change, remove)
+- [x] Member removal anonymizes user + unassigns tasks + deletes sessions
+- [x] Invitation endpoints (list, send, resend) with email queueing
+- [x] Label endpoints (CRUD) with palette validation
+- [x] Label deletion cascades to `task_labels`
+- [x] Integration tests across roles
+- [x] Audit log entries for all mutations
 
-#### Phase C2 — Projects and Project Access `[ ] Not started`
-- [ ] Project endpoints (`GET`, `POST`, `GET :id`, `PATCH :id`)
-- [ ] Project-access endpoints (`GET`, `POST`, `DELETE`)
-- [ ] `assert_project_visible` helper used by `require_project_access`
-- [ ] Owner/Admin implicit project visibility
-- [ ] Cross-workspace isolation tests
-- [ ] Audit log entries
+#### Phase C2 — Projects and Project Access `[x] Complete`
+- [x] Project endpoints (`GET`, `POST`, `GET :id`, `PATCH :id`)
+- [x] Project-access endpoints (`GET`, `POST`, `DELETE`)
+- [x] `assert_project_visible` helper used by `require_project_access`
+- [x] Owner/Admin implicit project visibility
+- [x] Cross-workspace isolation tests
+- [x] Audit log entries
 
-#### Phase C3 — Tasks `[ ] Not started`
-- [ ] `GET /projects/:id/tasks` with cursor pagination + filter/sort params
-- [ ] `POST /projects/:id/tasks` (defaults: backlog, none priority)
-- [ ] `GET /tasks/:id`, `PATCH /tasks/:id`
-- [ ] `PATCH /tasks/:id/status` split endpoint
-- [ ] Label assignment via PATCH (full set replacement)
-- [ ] Last-write-wins semantics (no concurrency token)
-- [ ] Workspace-scoping enforced in service layer
-- [ ] Audit log entries
-- [ ] Integration tests across roles, sort/filter, cancelled-by-default
-- [ ] Assignee project-access enforcement
-- [ ] FTS column maintenance verified in tests
+#### Phase C3 — Tasks `[x] Complete`
+- [x] `GET /projects/:id/tasks` with cursor pagination + filter/sort params
+- [x] `POST /projects/:id/tasks` (defaults: backlog, none priority)
+- [x] `GET /tasks/:id`, `PATCH /tasks/:id`
+- [x] `PATCH /tasks/:id/status` split endpoint
+- [x] Label assignment via PATCH (full set replacement)
+- [x] Last-write-wins semantics (no concurrency token)
+- [x] Workspace-scoping enforced in service layer
+- [x] Audit log entries
+- [x] Integration tests across roles, sort/filter, cancelled-by-default
+- [x] Assignee project-access enforcement
+- [x] FTS column maintenance verified in tests
 
-#### Phase C4 — Comments and @Mentions `[ ] Not started`
-- [ ] `GET /tasks/:id/comments` (paginated chronological)
-- [ ] `POST /tasks/:id/comments`
-- [ ] `PATCH /comments/:id`, `DELETE /comments/:id` (author only) — confirm Open Item #1 first
-- [ ] Server-side @mention parser (resolves to workspace members)
-- [ ] Comment DTO carries resolved mentions
-- [ ] Audit log entry for comment creation
-- [ ] Integration tests (post w/ mentions, viewer denied, cross-workspace mentions dropped)
+#### Phase C4 — Comments and @Mentions `[x] Complete`
+- [x] `GET /tasks/:id/comments` (paginated chronological)
+- [x] `POST /tasks/:id/comments`
+- [x] `PATCH /comments/:id`, `DELETE /comments/:id` (author only) — confirm Open Item #1 first
+- [x] Server-side @mention parser (resolves to workspace members)
+- [x] Comment DTO carries resolved mentions
+- [x] Audit log entry for comment creation
+- [x] Integration tests (post w/ mentions, viewer denied, cross-workspace mentions dropped)
 
-#### Phase C5 — Activity Feed `[ ] Not started`
-- [ ] `emit_activity` service helper
-- [ ] Wire emission in: task create / status change / assign / unassign / comment create
-- [ ] `GET /activity` (workspace + project scope) with cursor pagination
-- [ ] Project-access filtering on workspace-scope feed
-- [ ] Integration tests (each event type, scope filtering, pagination)
-- [ ] Performance smoke test (<50ms at seed scale)
+#### Phase C5 — Activity Feed `[x] Complete`
+- [x] `emit_activity` service helper
+- [x] Wire emission in: task create / status change / assign / unassign / comment create
+- [x] `GET /activity` (workspace + project scope) with cursor pagination
+- [x] Project-access filtering on workspace-scope feed
+- [x] Integration tests (each event type, scope filtering, pagination)
+- [x] Performance smoke test (<50ms at seed scale)
 
-#### Phase C6 — Notifications `[ ] Not started`
-- [ ] `dispatch_notifications` service helper (per ADR 070)
-- [ ] Wire dispatch for: mention / assignment / status change on assigned / comment on assigned
-- [ ] Self-trigger suppression rule
-- [ ] `GET /notifications`
-- [ ] `POST /notifications/mark-all-read`, `POST /notifications/:id/read`
-- [ ] Unread-count query backed by partial index
-- [ ] Integration tests for every trigger including self-suppression
+#### Phase C6 — Notifications `[x] Complete`
+- [x] `dispatch_notifications` service helper (per ADR 070)
+- [x] Wire dispatch for: mention / assignment / status change on assigned / comment on assigned
+- [x] Self-trigger suppression rule
+- [x] `GET /notifications`
+- [x] `POST /notifications/mark-all-read`, `POST /notifications/:id/read`
+- [x] Unread-count query backed by partial index
+- [x] Integration tests for every trigger including self-suppression
 
-#### Phase C7 — Search `[ ] Not started`
-- [ ] `GET /search?q=...` with `websearch_to_tsquery`
-- [ ] Project-access scoping
-- [ ] Result DTO (title, project, status, optional snippet)
-- [ ] `ts_rank_cd` ranking; result limit ~20
-- [ ] Cancelled tasks excluded by default
-- [ ] Integration tests (matching, scope exclusion, malformed query)
-- [ ] Performance smoke test (<50ms at seed scale)
+#### Phase C7 — Search `[x] Complete`
+- [x] `GET /search?q=...` with `websearch_to_tsquery`
+- [x] Project-access scoping
+- [x] Result DTO (title, project, status, optional snippet)
+- [x] `ts_rank_cd` ranking; result limit ~20
+- [x] Cancelled tasks excluded by default
+- [x] Integration tests (matching, scope exclusion, malformed query)
+- [x] Performance smoke test (<50ms at seed scale)
 
-#### Phase C8 — Dashboard Endpoints `[ ] Not started`
-- [ ] `GET /dashboard/my-tasks` (grouped by project, due-date sorted, overdue first)
-- [ ] `GET /dashboard/projects` (with status counts)
-- [ ] Integration tests (empty, role-aware, status counts, ordering)
-- [ ] Distinct DTOs from ORM models
+#### Phase C8 — Dashboard Endpoints `[x] Complete`
+- [x] `GET /dashboard/my-tasks` (grouped by project, due-date sorted, overdue first)
+- [x] `GET /dashboard/projects` (with status counts)
+- [x] Integration tests (empty, role-aware, status counts, ordering)
+- [x] Distinct DTOs from ORM models
 
 ---
 
@@ -500,7 +500,7 @@ Refer to the implementation plan for the goal, definition of done, and reference
 
 These were surfaced during plan validation (§6.4 of the implementation plan). Resolve each before its consuming phase begins.
 
-- [ ] **Open Item #1 (before C4):** Comment edit/delete scope — default decision is "author only". Record as ADR or confirm.
+- [x] **Open Item #1 (before C4):** Comment edit/delete scope — default decision is "author only". Record as ADR or confirm. **Resolved 2026-05-09 with [ADR 088](../technical/decisions/088-comment-edit-delete-scope.md): author-only edit/delete; admins/owners cannot mutate other users' comments.**
 - [ ] **Open Item #2 (before G8):** Email change in profile — default is "not exposed in v1". Confirm with PRD revision.
 - [ ] **Open Item #3 (before G8):** Last-used view per project storage — default is `localStorage`.
 - [ ] **Open Item #4 (before G3):** Project activity feed surface — default is side panel reachable from sub-nav. Confirm with design.
@@ -746,3 +746,43 @@ The three TODOs from the cumulative Part B verification block were exercised end
 2. **`docker-compose.test.yml` — api-test service** could not actually run the test suite. Two issues:
    - The conftest reads `TEST_DATABASE_URL`, but the test compose only set `DATABASE_URL`. Without the env var the conftest fell back to `localhost:5432/taskflow_test`, hit `OperationalError`, and silently `pytest.skip`'d every `requires_db` test. Fixed by adding `TEST_DATABASE_URL` matching the in-network `db:5432/taskflow_test`.
    - The image is built `uv sync --frozen --no-dev`, so pytest is not on the PATH. Fixed by changing the command to `sh -c "uv sync --frozen && exec pytest -q"` — this installs the dev group at container start (the image already has `pyproject.toml` + `uv.lock` baked in, so no external network dependency).
+
+### 2026-05-09 — Part C complete (8 phases)
+
+All eight backend-domain phases shipped in one push: workspace/members/invitations/labels (C1), projects + project access (C2), tasks (C3), comments + @mentions (C4), activity feed (C5), notifications (C6), search (C7), dashboard endpoints (C8). **38 new endpoints**, ~16 service files, ~10 schema files, **159 integration tests + 8 unit tests, all green**, against real Postgres in Docker. Strict mypy clean across 101 source files; ruff/ruff-format clean.
+
+#### Architecture decisions reconciled during the build
+
+1. **Open Item #1 resolved** with [ADR 088](../technical/decisions/088-comment-edit-delete-scope.md): comment edit and delete are author-only. Owner/Admin cannot mutate another user's comments in v1.
+2. **Audit-log scope strictly per ADR 084.** Migration `0002_audit_events_part_c` extended the `audit_log.event_type` CHECK with eight new admin events: `workspace.updated`, `workspace.label.{created,updated,deleted}`, `project.created`, `project.updated`, `project.access.{added,removed}`. ADR 084 was updated to match. **Task and comment events do NOT write to `audit_log`** — the activity_events table is the source of truth for content actions (per ADR 063). The plan's per-phase "audit log entries" boxes for C3/C4 were checked under that interpretation.
+3. **Project-access dependency consolidated.** `auth.dependencies.require_project_access` now delegates to `services.projects.assert_project_visible` so the same check is callable from service code (used by C3's `/tasks/:id` lookup, where the path doesn't carry a `project_id`).
+4. **Notification de-dup.** When a comment both `@`-mentions the assignee AND fires the comment-on-assigned-task trigger, the recipient gets one row of type `mention` (the `mention` event takes precedence). Implemented in `services.notifications.dispatch_for_comment` and tested.
+5. **Mention parser regex.** `r"(?:^|(?<=\s))@([A-Za-z0-9_-]+)"` — handles must follow whitespace or start-of-string, so `user@example.com` is not matched. Token is letters / digits / `_` / `-` (no internal `.`); names with spaces resolve via slugified comparison (`@aurora-owner` matches User.name "Aurora Owner"). 8 unit tests cover known/unknown/dedup/case/punctuation/email/word-boundary.
+6. **Anonymization helper extracted.** `services.users.anonymize_user(db, user)` is the single source of truth for clearing PII + sessions + task assignments; called by both B4's self-delete and C1's "remove member."
+
+#### Carried forward to later phases (intentional)
+
+- **Real-time fan-out.** Service paths emit `activity_events` and `notifications` rows but do NOT call `publish_event`. D1 will add the WebSocket dispatch.
+- **SES / MailHog wiring.** Invitation send and password-reset send still use the `BackgroundTasks` stub. D2 wires the adapter.
+- **`slowapi` rate-limit decorators.** TODO comments live at every rate-limited endpoint per the B4 pattern. E1 adds the decorators.
+- **Performance smoke tests.** C5 / C7 / dashboard each have a "<50ms at seed scale" requirement. Deferred to E3 alongside the seed data (E4) so the benchmarks run against representative volume.
+- **Search snippet** (PRD §12.1 marked optional) — not implemented in v1.
+
+#### Files added in Part C
+
+- Migration: `apps/api/taskflow/db/migrations/versions/0002_audit_events_part_c.py`
+- ADR: `docs/technical/decisions/088-comment-edit-delete-scope.md`
+- Routers (`apps/api/taskflow/api/v1/`): `workspaces.py`, `labels.py`, `projects.py`, `tasks.py`, `comments.py`, `activity.py`, `notifications.py`, `search.py`, `dashboard.py`
+- Services (`apps/api/taskflow/services/`): `workspaces.py`, `members.py`, `invitations.py`, `labels.py`, `users.py` (anonymize), `projects.py`, `project_access.py`, `tasks.py`, `_pagination.py`, `activity.py`, `comments.py`, `mentions.py`, `notifications.py`, `search.py`, `dashboard.py`
+- Schemas (`apps/api/taskflow/schemas/`): `workspaces.py`, `members.py`, `invitations.py`, `labels.py`, `projects.py`, `tasks.py`, `comments.py`, `activity.py`, `notifications.py`, `search.py`, `dashboard.py`
+- Integration tests (`apps/api/tests/integration/`): `test_workspace_endpoints.py`, `test_member_endpoints.py`, `test_invitation_endpoints.py`, `test_label_endpoints.py`, `test_project_endpoints.py`, `test_project_access_endpoints.py`, `test_workspace_isolation.py`, `test_task_endpoints.py`, `test_comment_endpoints.py`, `test_activity_endpoints.py`, `test_notification_endpoints.py`, `test_search_endpoint.py`, `test_dashboard_endpoints.py`, plus shared helpers in `_helpers.py`
+- Unit tests: `apps/api/tests/unit/test_mention_parser.py`
+
+Modified: `apps/api/taskflow/db/models/audit_log.py` (extended `AUDIT_EVENT_TYPES`), `apps/api/taskflow/auth/dependencies.py` (`require_project_access` delegates to service), `apps/api/taskflow/services/auth.py` (`delete_account` uses `anonymize_user`), `apps/api/taskflow/api/v1/__init__.py` (mounts new routers), `docs/technical/decisions/084-audit-logging-scope.md` (extended event table).
+
+#### Final verification (this session)
+
+- `docker compose -f docker-compose.test.yml run --rm api-test` — **159 passed in 10.91s**.
+- `uv run ruff check taskflow tests` — clean.
+- `uv run ruff format --check taskflow tests` — clean.
+- `uv run mypy --cache-dir /tmp/mypy_cache taskflow tests` — **101 source files, no issues** (cache moved off the bind mount because Docker for Mac's bind-mount fcntl write semantics deadlock with mypy's metadata writes).

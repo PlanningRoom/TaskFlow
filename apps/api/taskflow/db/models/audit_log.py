@@ -12,6 +12,7 @@ from taskflow.db.models import Base, CreatedAtMixin, UUIDPKMixin
 # Source of truth: ADR 084. Adding a new event requires a migration that
 # extends the CHECK constraint below.
 AUDIT_EVENT_TYPES = (
+    # Auth + self-service (0001_initial).
     "auth.signup",
     "auth.login.success",
     "auth.login.failure",
@@ -26,6 +27,15 @@ AUDIT_EVENT_TYPES = (
     "workspace.invitation.resent",
     "workspace.invitation.accepted",
     "account.deleted",
+    # Part C admin events (migration 0002).
+    "workspace.updated",
+    "workspace.label.created",
+    "workspace.label.updated",
+    "workspace.label.deleted",
+    "project.created",
+    "project.updated",
+    "project.access.added",
+    "project.access.removed",
 )
 
 _EVENT_TYPE_CHECK_SQL = "event_type IN (" + ", ".join(f"'{e}'" for e in AUDIT_EVENT_TYPES) + ")"

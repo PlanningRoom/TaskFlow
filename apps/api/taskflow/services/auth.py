@@ -278,16 +278,9 @@ async def delete_account(
     if not user.password_hash or not verify_password(password, user.password_hash):
         raise InvalidCredentialsError("Password is incorrect.")
 
-    from taskflow.db.models.task import Task
+    from taskflow.services.users import anonymize_user
 
-    user.email = None
-    user.name = None
-    user.password_hash = None
-    user.deleted_at = datetime.now(UTC)
-
-    await session_helpers.delete_sessions_for_user(db, user.id)
-    await db.execute(update(Task).where(Task.assignee_id == user.id).values(assignee_id=None))
-
+    await anonymize_user(db, user)
     await write_audit_log(db, event_type="account.deleted", actor_id=user.id, request=request)
 
 

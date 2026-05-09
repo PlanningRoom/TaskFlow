@@ -12,8 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from taskflow.auth import sessions as session_module
 from taskflow.auth.csrf import csrf_check
-from taskflow.auth.permissions import Action, has_implicit_project_access, is_allowed
-from taskflow.db.models.project import ProjectMembership
+from taskflow.auth.permissions import Action, is_allowed
 from taskflow.db.models.session import Session as SessionModel
 from taskflow.db.models.user import User
 from taskflow.db.models.workspace import Workspace
@@ -115,27 +114,20 @@ def require_role(
 def require_project_access(
     project_id_param: str = "project_id",
 ) -> Callable[..., Coroutine[Any, Any, None]]:
-    """Factory: ensure the caller has access to the project named in the path."""
+    """Factory: ensure the caller has access to the project named in the path.
+
+    Delegates to `services.projects.assert_project_visible` so the same access
+    rule is callable from service code (e.g. for `/tasks/:id` lookups that
+    don't carry the project id in the path).
+    """
 
     async def _check(request: Request, db: DbDep, user: UserDep) -> None:
+        from taskflow.services.projects import assert_project_visible
+
         raw = request.path_params.get(project_id_param)
         if raw is None:
             raise PermissionDeniedError("Project id missing from path.", code="PROJECT_ID_REQUIRED")
-        project_id = UUID(raw)
-
-        if has_implicit_project_access(user.role):
-            return
-
-        membership = await db.scalar(
-            select(ProjectMembership).where(
-                ProjectMembership.project_id == project_id,
-                ProjectMembership.user_id == user.id,
-            )
-        )
-        if membership is None:
-            raise PermissionDeniedError(
-                "You don't have access to this project.", code="PROJECT_ACCESS_DENIED"
-            )
+        await assert_project_visible(db, user=user, project_id=UUID(raw))
 
     return _check
 
