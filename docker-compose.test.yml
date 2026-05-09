@@ -21,10 +21,11 @@ services:
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql+asyncpg://taskflow:taskflow@db:5432/taskflow_test
+      TEST_DATABASE_URL: postgresql+asyncpg://taskflow:taskflow@db:5432/taskflow_test
       APP_ENV: test
     depends_on:
       db:
         condition: service_healthy
-    command: ["pytest", "-q"]
+    command: ["sh", "-c", "uv sync --frozen && exec pytest -q"]
     volumes:
       - ./apps/api:/app
