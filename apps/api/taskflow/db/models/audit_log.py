@@ -46,7 +46,7 @@ class AuditLog(UUIDPKMixin, CreatedAtMixin, Base):
 
     __tablename__ = "audit_log"
     __table_args__ = (
-        CheckConstraint(_EVENT_TYPE_CHECK_SQL, name="audit_log_event_type_in_enum"),
+        CheckConstraint(_EVENT_TYPE_CHECK_SQL, name="ck_audit_log_event_type_in_enum"),
         Index("ix_audit_log_created_at", "created_at"),
     )
 

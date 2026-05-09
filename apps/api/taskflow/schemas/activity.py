@@ -19,6 +19,10 @@ class ActivityEventDTO(BaseModel):
     subject_type: str
     subject_id: UUID
     project: ProjectRefDTO | None
+    # Human-readable detail string for the UI sentence (e.g. "to In Review",
+    # task title, comment preview). Derived from event_type + metadata at
+    # hydration time so the frontend can render without a name table.
+    detail: str | None
     metadata: dict[str, Any]
     created_at: datetime
 

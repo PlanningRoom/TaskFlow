@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from uuid import UUID
+
 from pydantic import BaseModel
 
 from taskflow.schemas.tasks import ProjectRefDTO, TaskSummary
@@ -26,8 +28,10 @@ class MyTasksResponse(BaseModel):
 
 
 class DashboardProjectDTO(BaseModel):
-    id: str
+    id: UUID
     name: str
+    # PRD §13.3 calls for a color dot on each project; not in screen-inventory
+    # ProjectSummary, but PRD wins.
     color: str | None
     task_counts: TaskCounts
 

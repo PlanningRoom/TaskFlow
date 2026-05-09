@@ -282,14 +282,14 @@ Each Part C phase follows the same pattern: Pydantic DTOs, service layer, endpoi
 **Goal:** Task CRUD, status transitions, label assignments, sort/filter parameters, and FTS column maintenance.
 
 **Tasks:**
-- Task endpoints: `GET /projects/:id/tasks` with cursor pagination (ADR 040) and query params for `status[]`, `assignee[]`, `priority[]`, `label[]`, `due` (`overdue|today|this_week|none`), `include_cancelled` (default false; PRD §6.9), `sort` (`created_desc|priority|due|assignee`; PRD §6.6).
+- Task endpoints: `GET /projects/:id/tasks` with cursor pagination (ADR 040) and query params for `status[]`, `assignee[]`, `priority[]`, `label[]`, `due` (`overdue|today|this_week|no_due_date`), `include_cancelled` (default false; PRD §6.9), `sort` (`created_at|priority|due_date|assignee`; PRD §6.6 — sort key names match screen inventory §3.5).
 - `POST /projects/:id/tasks` (Owner/Admin/Member, PRD §6.1). Defaults: status `backlog`, priority `none`.
 - `GET /tasks/:id`, `PATCH /tasks/:id` (Owner/Admin/Member). Title required (non-empty), description Markdown (ADR 014).
 - `PATCH /tasks/:id/status` (split for clarity; allows status-only mutations to be small messages and easy to audit).
 - Task-label assignment via PATCH (full replacement of label set in one call).
 - Last-write-wins semantics (ADR 008); no optimistic concurrency token at this stage.
 - Service-layer enforcement of `workspace_id` scoping on every read and write (TDD §8.3).
-- Audit log entries for every task state change.
+- Activity-event row for every task lifecycle change (`task.created`, `task.status_changed`, `task.assigned`, `task.unassigned`) per ADR 063. Per ADR 084 these stay out of `audit_log` — that table is reserved for security-sensitive admin actions.
 - Integration tests: every endpoint × every role × happy + denied; cancelled-by-default filter behavior; sort behaviors; assignee must have project access; due-date sort places nulls last; cursor pagination consistency.
 
 **Deliverables:** A complete tasks API. The board view's queries are fully serviceable.
@@ -307,9 +307,9 @@ Each Part C phase follows the same pattern: Pydantic DTOs, service layer, endpoi
 **Tasks:**
 - `GET /tasks/:id/comments` (paginated chronological).
 - `POST /tasks/:id/comments` (Owner/Admin/Member, PRD §11.1). Body is Markdown.
-- Comment editing/deletion: PRD §11.3 marks this an implementation detail. Default decision: support `PATCH /comments/:id` and `DELETE /comments/:id` for the comment author only; admins/owners cannot edit other users' comments. Document this decision in a new ADR before the phase ships (see §6 Open Items).
+- Comment editing/deletion: author-only per ADR 088. `PATCH /comments/:id` and `DELETE /comments/:id` are restricted to the comment's author; Owner/Admin cannot mutate other users' comments. (Resolves Open Item #1.)
 - Server-side @mention parser: extract `@handle` tokens, resolve against workspace members, return resolved mention list as part of the comment DTO. Unknown handles remain plain text (TDD §6.6).
-- Audit log entry for comment creation (other actions follow standard mutation logging).
+- Activity-event row on `comment.created` per ADR 063. Per ADR 084 these stay out of `audit_log` — comment lifecycle isn't a security event.
 - Integration tests: post comment with mentions, verify resolved mentions in response; viewer cannot post; mention of cross-workspace user is dropped; large body handling.
 
 **Deliverables:** Comments are storable, retrievable, and carry a resolved mention list ready for notification dispatch.
@@ -332,7 +332,7 @@ Each Part C phase follows the same pattern: Pydantic DTOs, service layer, endpoi
 
 **Deliverables:** Activity is written everywhere it should be, and the feed endpoint serves the dashboard's "Recent Activity" and the project-scope feed.
 
-**Definition of done:** All integration tests green. Performance smoke: feed query stays under 50 ms with seed-data scale.
+**Definition of done:** All integration tests green. Performance smoke (<50 ms) is deferred to E3, where seed data (E4) provides representative volume.
 
 **References:** ADR 063 · PRD §13.2, §14 · TDD §8.2 (`activity_events`)
 
@@ -368,13 +368,13 @@ Each Part C phase follows the same pattern: Pydantic DTOs, service layer, endpoi
 - `GET /search?q=...` returning ranked task matches (ADR 062).
 - Use `websearch_to_tsquery` for safe parsing of arbitrary user input (TDD §12.2).
 - Filter by accessible projects (workspace + project-access scoping).
-- Result DTO includes task title, project name, status, and a snippet (optional; can defer if expensive).
+- Result DTO includes task title, project name, and status. Snippet is deferred per PRD §12.1 (revisit post-v1).
 - Rank with `ts_rank_cd`. Limit results to ~20.
 - Integration tests: matching titles, matching descriptions, exclusion of inaccessible projects, malformed query produces empty result not error, cancelled tasks excluded by default.
 
 **Deliverables:** Search backs the global header search overlay.
 
-**Definition of done:** All integration tests green. Search query stays under 50 ms with seed-data scale.
+**Definition of done:** All integration tests green. Performance smoke (<50 ms) is deferred to E3 with seed data.
 
 **References:** ADR 062 · PRD §12.1 · TDD §8.2 (`tasks.search_vector`)
 

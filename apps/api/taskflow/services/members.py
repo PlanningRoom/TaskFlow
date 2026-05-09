@@ -17,9 +17,16 @@ from taskflow.services.users import anonymize_user
 
 
 async def list_members(db: AsyncSession, *, workspace_id: UUID) -> list[User]:
-    """Return all users (active and anonymized) in the workspace."""
+    """Return active users in the workspace.
+
+    Anonymized (deleted_at IS NOT NULL) users are filtered out per screen
+    inventory §3.9 — the member list is for live members only. Their content
+    history is preserved via the audit log and history-bearing FKs.
+    """
     rows = await db.execute(
-        select(User).where(User.workspace_id == workspace_id).order_by(User.created_at.asc())
+        select(User)
+        .where(User.workspace_id == workspace_id, User.deleted_at.is_(None))
+        .order_by(User.created_at.asc())
     )
     return list(rows.scalars().all())
 

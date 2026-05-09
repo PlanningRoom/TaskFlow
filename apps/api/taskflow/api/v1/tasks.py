@@ -78,7 +78,7 @@ async def list_project_tasks(
     label: Annotated[list[UUID] | None, Query()] = None,
     due: str | None = None,
     include_cancelled: bool = False,
-    sort: str = "created_desc",
+    sort: str = "created_at",
     cursor: str | None = None,
     limit: int = task_service.DEFAULT_LIMIT,
 ) -> ListTasksResponse:

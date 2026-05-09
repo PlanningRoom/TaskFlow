@@ -26,21 +26,34 @@ from taskflow.services import notifications as notification_service
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
 
+_DETAIL_BY_EVENT: dict[str, str] = {
+    "mention": "mentioned you in a comment",
+    "task_assigned": "assigned this task to you",
+    "task_commented": "commented on a task assigned to you",
+}
+
+
+def _detail_for(event_type: str, metadata: dict[str, object]) -> str | None:
+    """Human-readable detail string for the notification, used by the UI."""
+    if event_type == "task_status_changed":
+        to = metadata.get("to")
+        return f"changed status to {to}" if to else "changed task status"
+    return _DETAIL_BY_EVENT.get(event_type)
+
+
 async def _hydrate(db: DbDep, n: Notification) -> NotificationDTO:
     actor_obj: User | None = None
     if n.actor_id is not None:
         actor_obj = await db.scalar(select(User).where(User.id == n.actor_id))
     task_ref: NotificationTaskRefDTO | None = None
+    project_ref: ProjectRefDTO | None = None
     if n.task_id is not None:
         task = await db.scalar(select(Task).where(Task.id == n.task_id))
         if task is not None:
+            task_ref = NotificationTaskRefDTO(id=task.id, title=task.title)
             project = await db.scalar(select(Project).where(Project.id == task.project_id))
             if project is not None:
-                task_ref = NotificationTaskRefDTO(
-                    id=task.id,
-                    title=task.title,
-                    project=ProjectRefDTO(id=project.id, name=project.name),
-                )
+                project_ref = ProjectRefDTO(id=project.id, name=project.name)
     return NotificationDTO(
         id=n.id,
         event_type=n.event_type,
@@ -48,6 +61,9 @@ async def _hydrate(db: DbDep, n: Notification) -> NotificationDTO:
         if actor_obj is not None
         else None,
         task=task_ref,
+        project=project_ref,
+        detail=_detail_for(n.event_type, n.metadata_),
+        read=n.read_at is not None,
         metadata=n.metadata_,
         created_at=n.created_at,
         read_at=n.read_at,

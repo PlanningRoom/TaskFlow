@@ -20,6 +20,24 @@ from taskflow.services.projects import assert_project_visible
 router = APIRouter(prefix="/activity", tags=["activity"])
 
 
+def _detail_for(event_type: str, metadata: dict[str, object]) -> str | None:
+    """Human-readable detail per screen inventory §3.4 — e.g. 'to In Review'."""
+    if event_type == "task.status_changed":
+        to = metadata.get("to")
+        return f"to {to}" if to else None
+    if event_type == "task.created":
+        title = metadata.get("title")
+        return str(title) if title else None
+    if event_type == "task.assigned":
+        return "assigned the task"
+    if event_type == "task.unassigned":
+        return "unassigned the task"
+    if event_type == "comment.created":
+        preview = metadata.get("preview")
+        return str(preview) if preview else "added a comment"
+    return None
+
+
 async def _hydrate_dto(db: DbDep, event: ActivityEvent) -> ActivityEventDTO:
     actor_obj: User | None = None
     if event.actor_id is not None:
@@ -39,6 +57,7 @@ async def _hydrate_dto(db: DbDep, event: ActivityEvent) -> ActivityEventDTO:
         subject_type=event.subject_type,
         subject_id=event.subject_id,
         project=project_ref,
+        detail=_detail_for(event.event_type, event.metadata_),
         metadata=event.metadata_,
         created_at=event.created_at,
     )

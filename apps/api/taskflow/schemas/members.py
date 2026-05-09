@@ -4,20 +4,26 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Literal
+from uuid import UUID
 
 from pydantic import BaseModel
 
-from taskflow.schemas.users import UserSummary
-
 Role = Literal["owner", "admin", "member", "viewer"]
-MemberStatus = Literal["active", "deleted"]
 
 
 class MemberDTO(BaseModel):
-    user: UserSummary
+    """Flat shape per screen inventory §3.9 — `id`, `display_name`, `email`,
+    `initials`, `avatar_color`, `role`. Deleted users are filtered out by the
+    list endpoint (anonymization removes the email anyway, so they'd render
+    blank). `joined_at` is included for the row's secondary metadata.
+    """
+
+    id: UUID
+    display_name: str | None
     email: str | None
+    initials: str
+    avatar_color: str
     role: Role
-    status: MemberStatus
     joined_at: datetime
 
 

@@ -786,3 +786,36 @@ Modified: `apps/api/taskflow/db/models/audit_log.py` (extended `AUDIT_EVENT_TYPE
 - `uv run ruff check taskflow tests` — clean.
 - `uv run ruff format --check taskflow tests` — clean.
 - `uv run mypy --cache-dir /tmp/mypy_cache taskflow tests` — **101 source files, no issues** (cache moved off the bind mount because Docker for Mac's bind-mount fcntl write semantics deadlock with mypy's metadata writes).
+
+### 2026-05-09 — Part C audit fixes
+
+A spec-vs-build audit (PRD + screen inventory + TDD + ADRs + implementation-plan) surfaced **12 inconsistencies** at three severity levels (correctness / convention / spec drift). Fixed in this session; tests still **159 passed**.
+
+#### Code fixes
+
+- **NotificationDTO** — added derived `read: bool`, added `detail: str | None` (computed at hydration from event_type + metadata), promoted `project` to a top-level field on the DTO (was nested inside `task`), kept `read_at` and `metadata` for completeness. Matches screen inventory §3.7.
+- **ActivityEventDTO** — added `detail: str | None` (e.g. "to In Review" for status changes; computed from metadata). Matches screen inventory §3.4.
+- **Task `SortKey` and `DueFilter`** — renamed to match screen inventory §3.5: `created_desc → created_at`, `due → due_date`, `none → no_due_date`. Service and router default updated.
+- **DashboardProjectDTO.id** — changed from `str` to `UUID` for consistency with every other DTO.
+- **MemberDTO** — flattened to `{id, display_name, email, initials, avatar_color, role, joined_at}` per screen inventory §3.9. `services.members.list_members` now filters anonymized users out (PRD §4.2 — anonymized rows shouldn't appear in the active member list; their content history is preserved via FK references).
+- **`audit_log` CHECK constraint name** — fixed in the model to match what the migrations declare (`ck_audit_log_event_type_in_enum`). Cosmetic but prevents alembic-autogenerate drift.
+
+#### Doc fixes
+
+- **`docs/planning/implementation-plan.md`**:
+  - C3 task list — sort/filter param names updated to match screen inventory; "audit log entries for every task state change" replaced with the canonical "activity-event row …per ADR 063 / out of audit_log per ADR 084" wording.
+  - C4 task list — comment edit/delete bullet now references ADR 088 by name (replacing the "default decision" prose); audit-log bullet replaced with activity-event wording.
+  - C5 / C7 definition-of-done — performance-smoke (<50 ms) explicitly deferred to E3 with seed data.
+  - C7 result DTO — snippet marked deferred per PRD §12.1 (not "include if cheap").
+- **`docs/design/screen-inventory.md`**:
+  - §3.4 Notification & ActivityEntry contracts updated to use the canonical event-name strings from ADR 063 / ADR 064 (DB CHECK pins them). The frontend can map to display strings cosmetically.
+  - §3.4 ProjectSummary contract: added `color: string | null` (PRD §13.3 wants a color dot).
+  - §4.1 Comment contract: added `mentions: Array<UserSummary>` (TDD §6.6) and `updatedAt` (ADR 088 — UI shows "(edited)" when `updatedAt ≠ createdAt`).
+  - §3.7 Notification contract: now includes `task`, `project`, `detail`, `metadata`, `readAt`, plus the corrected `eventType` strings.
+  - §8 Shared Types: added a field-naming convention note — API emits snake_case; the screen inventory uses camelCase as the React-side shape; F2 codegen bridges via `openapi-typescript`.
+  - §8 UserSummary: added `deleted: boolean` to match the Pydantic DTO.
+
+#### Verification
+
+- `docker compose -f docker-compose.test.yml run --rm api-test` — **159 passed in 10.77s**.
+- ruff / ruff-format / mypy (via docker, `--cache-dir /tmp/mypy_cache`) — clean.

@@ -125,7 +125,7 @@ def _due_filter_clause(due: str) -> Any:
     if due == "this_week":
         end = today + timedelta(days=6)
         return and_(Task.due_date >= today, Task.due_date <= end)
-    if due == "none":
+    if due == "no_due_date":
         return Task.due_date.is_(None)
     return None
 
@@ -141,7 +141,7 @@ async def list_tasks(
     label_ids: list[UUID] | None = None,
     due: str | None = None,
     include_cancelled: bool = False,
-    sort: str = "created_desc",
+    sort: str = "created_at",
     cursor: str | None = None,
     limit: int = DEFAULT_LIMIT,
 ) -> tuple[list[Task], str | None]:
@@ -170,7 +170,7 @@ async def list_tasks(
     if sort == "priority":
         rank = case(_PRIORITY_RANK, value=Task.priority, else_=99)
         stmt = stmt.order_by(rank.asc(), Task.created_at.desc(), Task.id.desc())
-    elif sort == "due":
+    elif sort == "due_date":
         stmt = stmt.order_by(
             Task.due_date.is_(None).asc(),
             Task.due_date.asc(),
@@ -183,10 +183,10 @@ async def list_tasks(
             Task.created_at.desc(),
             Task.id.desc(),
         )
-    else:  # created_desc
+    else:  # created_at (default — descending newest-first)
         stmt = stmt.order_by(Task.created_at.desc(), Task.id.desc())
 
-    if cursor is not None and sort == "created_desc":
+    if cursor is not None and sort == "created_at":
         decoded = decode_cursor(cursor)
         if decoded is not None:
             cur_ts, cur_id = decoded
@@ -201,7 +201,7 @@ async def list_tasks(
     rows = list((await db.execute(stmt)).scalars().all())
 
     next_cursor: str | None = None
-    if sort == "created_desc" and len(rows) > limit:
+    if sort == "created_at" and len(rows) > limit:
         rows = rows[:limit]
         last = rows[-1]
         next_cursor = encode_cursor(last.created_at, last.id)

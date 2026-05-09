@@ -205,14 +205,19 @@ TaskSummary {
 ```
 ActivityEntry {
   id: string
-  type: "status_change" | "comment" | "task_created" | "assignment" | "reassignment"
-  actor: UserSummary
-  task: { id: string, title: string }
-  project: { id: string, name: string }
-  detail: string | null       // e.g., "to In Review" for status changes
+  eventType: "task.created" | "task.status_changed" | "task.assigned" | "task.unassigned" | "comment.created"
+  actor: UserSummary | null
+  subjectType: string          // "task" | "comment"
+  subjectId: string
+  project: { id: string, name: string } | null
+  detail: string | null        // e.g., "to In Review" for status changes
+  metadata: Record<string, unknown>
   createdAt: datetime
 }
 ```
+
+Event-type strings are the canonical names from ADR 063; the DB CHECK
+constraint pins them. The frontend can map to display strings cosmetically.
 
 #### Right Column — Projects
 
@@ -230,6 +235,7 @@ ActivityEntry {
 ProjectSummary {
   id: string
   name: string
+  color: string | null         // for the sidebar/dashboard color dot (PRD §13.3)
   taskCounts: {
     backlog: number
     todo: number
@@ -380,15 +386,20 @@ Same as Board View (Section 3.5), with List toggle active.
 ```
 Notification {
   id: string
-  type: "mention" | "assignment" | "status_change" | "comment"
+  eventType: "mention" | "task_assigned" | "task_status_changed" | "task_commented"
   read: boolean
-  actor: UserSummary
-  task: { id: string, title: string }
-  project: { id: string, name: string }
+  actor: UserSummary | null
+  task: { id: string, title: string } | null
+  project: { id: string, name: string } | null
   detail: string | null
+  metadata: Record<string, unknown>
   createdAt: datetime
+  readAt: datetime | null
 }
 ```
+
+Event-type strings are the canonical names from ADR 064; the DB CHECK
+constraint pins them. The frontend can map to display strings cosmetically.
 
 ---
 
@@ -602,8 +613,10 @@ TaskDetail {
 Comment {
   id: string
   body: string                     // raw Markdown with @mention syntax
-  author: UserSummary
+  author: UserSummary | null       // null if author has been anonymized (ADR 065)
+  mentions: Array<UserSummary>     // resolved at create/edit time (TDD §6.6)
   createdAt: datetime
+  updatedAt: datetime              // equal to createdAt if never edited; UI shows "(edited)" when ≠
 }
 
 UserSummary {
@@ -1032,6 +1045,16 @@ CurrentUser {
 
 These types are referenced across multiple screens.
 
+> **Field naming convention.** The API (FastAPI / Pydantic) emits JSON
+> field names in `snake_case` — `display_name`, `created_at`, `task_counts`,
+> `due_date`, `comment_count`, `read_at`, etc. The contracts in this
+> document use camelCase for frontend readability; the F2 codegen step
+> (`pnpm gen:api` with `openapi-typescript`) maps the snake_case JSON
+> keys to camelCase TypeScript fields at the API client boundary, so the
+> React surface sees camelCase. **The OpenAPI schema at
+> `/api/v1/openapi.json` is the source of truth for wire format**; this
+> document is the React-side shape.
+
 ```
 Role: "owner" | "admin" | "member" | "viewer"
 
@@ -1047,9 +1070,10 @@ Label {
 
 UserSummary {
   id: string
-  displayName: string
+  displayName: string | null
   initials: string
   avatarColor: string
+  deleted: boolean
 }
 ```
 

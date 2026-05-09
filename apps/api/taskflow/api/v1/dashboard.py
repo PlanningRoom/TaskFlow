@@ -42,7 +42,7 @@ async def dashboard_projects_endpoint(db: DbDep, user: UserDep) -> DashboardProj
     pairs = await dashboard_service.projects_with_counts(db, user=user)
     items = [
         DashboardProjectDTO(
-            id=str(p.id),
+            id=p.id,
             name=p.name,
             color=p.color,
             task_counts=TaskCounts(

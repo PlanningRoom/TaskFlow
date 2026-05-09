@@ -13,8 +13,10 @@ from taskflow.schemas.users import UserSummary
 
 TaskStatus = Literal["backlog", "todo", "in_progress", "in_review", "done", "cancelled"]
 TaskPriority = Literal["none", "low", "medium", "high", "urgent"]
-SortKey = Literal["created_desc", "priority", "due", "assignee"]
-DueFilter = Literal["overdue", "today", "this_week", "none"]
+# Sort keys per screen inventory §3.5. `created_at` defaults to descending order.
+SortKey = Literal["created_at", "priority", "due_date", "assignee"]
+# Due filter values per screen inventory §3.5 (`dueDateFilter`).
+DueFilter = Literal["overdue", "today", "this_week", "no_due_date"]
 
 TitleField = Annotated[str, Field(min_length=1, max_length=400)]
 DescriptionField = Annotated[str, Field(max_length=20_000)]

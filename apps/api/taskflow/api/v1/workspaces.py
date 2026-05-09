@@ -30,7 +30,7 @@ from taskflow.schemas.members import (
     ListMembersResponse,
     MemberDTO,
 )
-from taskflow.schemas.users import user_summary
+from taskflow.schemas.users import avatar_color_for, initials_from, user_summary
 from taskflow.schemas.workspaces import UpdateWorkspaceRequest, WorkspaceDTO
 from taskflow.services import invitations as invitation_service
 from taskflow.services import members as member_service
@@ -74,12 +74,13 @@ async def update_workspace(
 
 
 def _member_dto(user: User) -> MemberDTO:
-    summary = user_summary(user.id, user.name, deleted=user.deleted_at is not None)
     return MemberDTO(
-        user=summary,
+        id=user.id,
+        display_name=user.name,
         email=user.email,
+        initials=initials_from(user.name),
+        avatar_color=avatar_color_for(user.id),
         role=user.role,
-        status="deleted" if user.deleted_at is not None else "active",
         joined_at=user.created_at,
     )
 
