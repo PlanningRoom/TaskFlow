@@ -90,7 +90,8 @@ Watch the full series on YouTube to see the methodology in action.
 | 06 | Technical Requirements and ADRs | [Watch](https://youtu.be/kHDyfIAcyy4) |
 | 07 | Create an Implementation Plan | [Watch](https://youtu.be/XYrN46X-uz8) |
 | 08 | Build Part 1 | [Watch](https://youtu.be/HLzz5d-GK2w) |
-| 09 | *Coming Soon* | |
+| 09 | Build Part 2 | [Watch](https://youtu.be/5yICMBDmAh4) |
+| 10 | *Coming Soon* | |
 
 ## Learn More
 
