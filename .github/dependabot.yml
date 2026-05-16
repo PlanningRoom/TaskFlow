@@ -1,5 +1,8 @@
 # Per ADR 086: Dependabot covers npm (frontend) and pip (backend).
 # CI does not fail on advisories — weekly triage cadence per ADR.
+# See ADR 086 for the build-phase override (phase-boundary triage during build).
+# Backend (pip) has no peer-dep-coupled package group — FastAPI + SQLAlchemy +
+# Pydantic + asyncpg don't move in lockstep the way React + Vite + plugin-react do.
 version: 2
 updates:
   - package-ecosystem: npm
