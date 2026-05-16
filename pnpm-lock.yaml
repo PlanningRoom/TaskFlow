@@ -21,8 +21,8 @@ importers:
         specifier: 2.9.14
         version: 2.9.14
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 6.0.3
+        version: 6.0.3
 
   apps/web:
     dependencies:
@@ -43,8 +43,8 @@ importers:
         specifier: 6.0.1
         version: 6.0.1(vite@8.0.10(yaml@2.9.0))
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 6.0.3
+        version: 6.0.3
       vite:
         specifier: 8.0.10
         version: 8.0.10(yaml@2.9.0)
@@ -55,8 +55,8 @@ importers:
         specifier: workspace:*
         version: link:../config
       typescript:
-        specifier: 5.6.3
-        version: 5.6.3
+        specifier: 6.0.3
+        version: 6.0.3
 
   packages/config: {}
 
@@ -531,8 +531,8 @@ packages:
     resolution: {integrity: sha512-BQqXRr4UoWI3UPFrtznCLykYHxwxWh53iCB57x092jPMjIlW1wnm3N895g5irpiXmnxUhREBB0n6+y8BHhs4nw==}
     hasBin: true
 
-  typescript@5.6.3:
-    resolution: {integrity: sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==}
+  typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -965,7 +965,7 @@ snapshots:
       '@turbo/windows-64': 2.9.14
       '@turbo/windows-arm64': 2.9.14
 
-  typescript@5.6.3: {}
+  typescript@6.0.3: {}
 
   vite@8.0.10(yaml@2.9.0):
     dependencies:
