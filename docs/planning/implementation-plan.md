@@ -532,7 +532,7 @@ Each Part C phase follows the same pattern: Pydantic DTOs, service layer, endpoi
 **Goal:** A Vite + React + TypeScript app boots, applies the design tokens, and is ready to host routes.
 
 **Tasks:**
-- Vite + React 18 + TypeScript strict (ADRs 027, 029, 030, 031). `apps/web/vite.config.ts`.
+- Vite + React 19 + TypeScript strict (ADRs 027, 029, 030, 031). `apps/web/vite.config.ts`. The frontend toolchain (React 19.2, Vite 8, `@vitejs/plugin-react` 6) was bumped ahead of Phase F1 — see `implementation-status.md` Dependabot Policy block.
 - Tailwind v3 (ADR 057) with `tailwind.config.ts` mapping theme keys to CSS custom properties.
 - `apps/web/src/styles/tokens.css` — every design token from DRD §2 declared on `:root` exactly per the DRD tables.
 - Inter font loaded from Google Fonts (DRD §3.1).

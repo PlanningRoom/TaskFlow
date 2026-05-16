@@ -1,6 +1,6 @@
 # TaskFlow — Implementation Status
 
-**Last Updated:** 2026-05-09
+**Last Updated:** 2026-05-16
 **Current Phase:** Phase D1 — Real-Time / WebSocket (next)
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
