@@ -12,6 +12,7 @@
     "typecheck": "tsc -b --noEmit"
   },
   "devDependencies": {
+    "@taskflow/config": "workspace:*",
     "typescript": "5.6.3"
   }
 }

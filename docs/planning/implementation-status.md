@@ -20,6 +20,18 @@ Refer to the implementation plan for the goal, definition of done, and reference
 
 ---
 
+## Dependabot Policy (build phase)
+
+Decided 2026-05-16. Applies until launch; revisit in operate mode.
+
+- **Cadence:** Review and merge open Dependabot PRs only at **phase boundaries** (when a phase flips to `[x] Complete`). Do not interrupt an in-progress phase to triage Dependabot, even for security advisories — they wait at most one phase.
+- **Patch/minor (incl. security):** Merge at the next phase boundary if CI is green.
+- **Majors:** Defer through Parts D and E. The **majors window is immediately before Phase F1 starts** — take all accumulated frontend majors together so React/Vite/plugin-react interact in one rebase, not three.
+- **Why:** Frontend code does not exist yet; frontend major bumps are lock-file-only changes today and become code-migration projects once Part F lands components.
+- **Auto-merge:** Off. Every Dependabot PR is merged manually after review. Revisit at launch.
+
+---
+
 ## Status Legend
 
 | Marker | Meaning |

@@ -74,8 +74,8 @@ jobs:
       - name: Install JS deps
         run: pnpm install --frozen-lockfile || pnpm install
 
-      - name: TypeScript build
-        run: pnpm exec tsc -b
+      - name: Typecheck (workspaces)
+        run: pnpm typecheck
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v3

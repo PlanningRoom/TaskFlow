@@ -51,6 +51,9 @@ importers:
 
   packages/api-types:
     devDependencies:
+      '@taskflow/config':
+        specifier: workspace:*
+        version: link:../config
       typescript:
         specifier: 5.6.3
         version: 5.6.3
