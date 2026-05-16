@@ -124,9 +124,9 @@ TaskFlow is a single-tenant cloud-hosted SaaS (ADR 002, 003) delivered as a web-
 | Layer | Choice | ADR |
 |-------|--------|-----|
 | Frontend language | TypeScript 5.x (strict mode) | 027 |
-| Frontend framework | React 18+ | 029 |
+| Frontend framework | React 19+ | 029 |
 | Frontend rendering | SPA (client-side) | 030 |
-| Build tooling | Vite 5+ | 031 |
+| Build tooling | Vite 8+ | 031 |
 | Server state | TanStack Query v5 | 053 |
 | Client state | Zustand + React Context | 054 |
 | Routing | TanStack Router v1 | 055 |

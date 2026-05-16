@@ -43,7 +43,7 @@ TaskFlow is a workspace task-management application built across the YouTube ser
 ### Prerequisites
 
 - Docker Desktop (or compatible engine) with `docker compose`
-- Node.js 20+ and `pnpm` 9+ (`corepack enable && corepack prepare pnpm@latest --activate`)
+- Node.js 20.17+ (or 22+ recommended) and `pnpm` 9+ (`corepack enable && corepack prepare pnpm@latest --activate`)
 - Python 3.12+ (only required for native iteration outside Docker)
 
 ### Quickstart
