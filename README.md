@@ -91,7 +91,8 @@ Watch the full series on YouTube to see the methodology in action.
 | 07 | Create an Implementation Plan | [Watch](https://youtu.be/XYrN46X-uz8) |
 | 08 | Build Part 1 | [Watch](https://youtu.be/HLzz5d-GK2w) |
 | 09 | Build Part 2 | [Watch](https://youtu.be/5yICMBDmAh4) |
-| 10 | *Coming Soon* | |
+| 10 | Build Part 3 | [Watch](https://youtu.be/5yICMBDmAh4) |
+| 11 | *Coming Soon* | [Watch](https://youtu.be/C-JIIHVX8jA) |
 
 ## Learn More
 
