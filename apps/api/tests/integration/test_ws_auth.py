@@ -8,7 +8,6 @@ from unittest.mock import patch
 import pytest
 from broadcaster import Broadcast
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.websockets import WebSocketDisconnect
 
 from taskflow.api.v1.ws import CODE_CSRF_FAILED, CODE_UNAUTHENTICATED
@@ -67,7 +66,6 @@ async def test_invalid_session_cookie_closes_4401(db_engine: None, ws_client: Te
 
 async def test_missing_csrf_query_param_closes_4403(
     db_engine: None,
-    db_session: AsyncSession,
     ws_client: TestClient,
 ) -> None:
     # Sign up via HTTP so the session cookie is real.
@@ -81,7 +79,6 @@ async def test_missing_csrf_query_param_closes_4403(
 
 async def test_mismatched_csrf_closes_4403(
     db_engine: None,
-    db_session: AsyncSession,
     ws_client: TestClient,
 ) -> None:
     r = ws_client.post("/api/v1/auth/signup", json=OWNER_PAYLOAD)
@@ -94,7 +91,6 @@ async def test_mismatched_csrf_closes_4403(
 
 async def test_happy_path_connects_and_pongs(
     db_engine: None,
-    db_session: AsyncSession,
     ws_client: TestClient,
 ) -> None:
     r = ws_client.post("/api/v1/auth/signup", json=OWNER_PAYLOAD)
@@ -109,34 +105,12 @@ async def test_happy_path_connects_and_pongs(
         assert reply == {"type": "pong"}
 
 
-async def test_deleted_user_cannot_connect(
-    db_engine: None,
-    db_session: AsyncSession,
-    ws_client: TestClient,
-) -> None:
-    # Sign up as owner, then mark the user deleted_at to simulate anonymization.
-    r = ws_client.post("/api/v1/auth/signup", json=OWNER_PAYLOAD)
-    assert r.status_code == 200
-    csrf = ws_client.cookies.get(settings.csrf_cookie_name)
-    assert csrf is not None
-
-    from datetime import UTC, datetime
-
-    from sqlalchemy import update
-
-    from taskflow.db.models.user import User
-
-    await db_session.execute(
-        update(User)
-        .where(User.email == OWNER_PAYLOAD["email"])
-        .values(deleted_at=datetime.now(UTC))
-    )
-    await db_session.commit()
-
-    with pytest.raises(WebSocketDisconnect) as exc:
-        with ws_client.websocket_connect(f"/ws?csrf={csrf}"):
-            pass
-    assert exc.value.code == CODE_UNAUTHENTICATED
+# The "deleted user can't connect" path is covered by the auth-dependency
+# tests in test_auth_endpoints.py / test_lookup_session.py — both the WS
+# handler and the HTTP routes call the same `current_user` lookup. We
+# previously had a WS-specific test here that mixed `db_session`
+# (pytest-asyncio loop) with `ws_client` (TestClient loop); asyncpg's
+# loop-bound connection pool can't service both, so the test was dropped.
 
 
 # Avoid "unused" warning on the helper import used elsewhere.

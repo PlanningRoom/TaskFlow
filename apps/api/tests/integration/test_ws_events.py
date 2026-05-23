@@ -14,7 +14,6 @@ from unittest.mock import patch
 import pytest
 from broadcaster import Broadcast
 from fastapi.testclient import TestClient
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from taskflow.realtime import bus as bus_module
 from taskflow.settings import settings
@@ -61,7 +60,6 @@ def _drain_until(ws: Any, expected_type: str, timeout: float = 2.0) -> dict[str,
 
 async def test_task_created_envelope_arrives(
     db_engine: None,
-    db_session: AsyncSession,
     ws_client: TestClient,
 ) -> None:
     # Signup → create project → open WS → create task → assert envelope.
@@ -95,7 +93,6 @@ async def test_task_created_envelope_arrives(
 
 async def test_workspace_isolation_no_leakage(
     db_engine: None,
-    db_session: AsyncSession,
     ws_client: TestClient,
 ) -> None:
     """A user in workspace A must NOT receive events from workspace B."""
@@ -145,7 +142,6 @@ async def test_workspace_isolation_no_leakage(
 
 async def test_comment_created_envelope_arrives(
     db_engine: None,
-    db_session: AsyncSession,
     ws_client: TestClient,
 ) -> None:
     r = ws_client.post("/api/v1/auth/signup", json=OWNER_PAYLOAD)
@@ -181,7 +177,6 @@ async def test_comment_created_envelope_arrives(
 
 async def test_task_status_changed_envelope_arrives(
     db_engine: None,
-    db_session: AsyncSession,
     ws_client: TestClient,
 ) -> None:
     assert ws_client.post("/api/v1/auth/signup", json=OWNER_PAYLOAD).status_code == 200
