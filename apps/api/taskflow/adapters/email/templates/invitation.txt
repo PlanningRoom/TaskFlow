@@ -1,0 +1,12 @@
+Hi,
+
+{{ inviter_name }} invited you to join the {{ workspace_name }} workspace on TaskFlow.
+
+Accept the invitation:
+{{ accept_url }}
+
+This link expires in 7 days.
+
+If you weren't expecting this, you can ignore this email.
+
+— TaskFlow

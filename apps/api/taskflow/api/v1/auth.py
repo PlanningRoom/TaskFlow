@@ -29,6 +29,7 @@ from taskflow.schemas.auth import (
 )
 from taskflow.schemas.users import CurrentUser, current_user_dto
 from taskflow.services import auth as auth_service
+from taskflow.services.emails import send_password_reset_email
 from taskflow.settings import settings
 
 _login_email_key = email_key_factory("email")
@@ -143,15 +144,8 @@ async def password_reset_request(
     user, raw = await auth_service.request_password_reset(db, email=body.email, request=request)
     await db.commit()
     if user is not None and raw is not None:
-        # Email send wired in D2; dispatch via BackgroundTasks per TDD §7.4.
-        background.add_task(_dispatch_password_reset_email, user.email or "", raw)
+        background.add_task(send_password_reset_email, to=user.email or "", raw_token=raw)
     return OkResponse()
-
-
-def _dispatch_password_reset_email(email: str, raw_token: str) -> None:
-    """Placeholder — replaced by the SES/MailHog adapter in Phase D2."""
-    # Intentionally empty; D2 wires the real send.
-    _ = (email, raw_token)
 
 
 @router.post("/password-reset/confirm", response_model=OkResponse)

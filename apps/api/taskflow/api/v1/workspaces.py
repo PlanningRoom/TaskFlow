@@ -36,6 +36,7 @@ from taskflow.schemas.workspaces import UpdateWorkspaceRequest, WorkspaceDTO
 from taskflow.services import invitations as invitation_service
 from taskflow.services import members as member_service
 from taskflow.services import workspaces as workspace_service
+from taskflow.services.emails import send_invitation_email
 from taskflow.settings import settings
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
@@ -150,11 +151,6 @@ async def remove_member(
 # ──────────────────────────────────────────────────────────────────────────────
 
 
-def _dispatch_invitation_email(email: str, raw_token: str) -> None:
-    """Placeholder — replaced by the SES/MailHog adapter in Phase D2."""
-    _ = (email, raw_token)
-
-
 def _invitation_dto(invitation: Invitation, inviter: User | None) -> InvitationDTO:
     return InvitationDTO(
         id=invitation.id,
@@ -214,7 +210,13 @@ async def send_invitation(
         request=request,
     )
     await db.commit()
-    background.add_task(_dispatch_invitation_email, body.email, raw_token)
+    background.add_task(
+        send_invitation_email,
+        to=body.email,
+        workspace_name=workspace.name,
+        inviter_name=user.name,
+        raw_token=raw_token,
+    )
     return SendInvitationResponse(invitation=_invitation_dto(invitation, user))
 
 
@@ -239,7 +241,12 @@ async def resend_invitation(
         request=request,
     )
     await db.commit()
-    background.add_task(_dispatch_invitation_email, invitation.email, raw_token)
-
     inviter = (await _resolve_inviters(db, [invitation])).get(invitation.invited_by)
+    background.add_task(
+        send_invitation_email,
+        to=invitation.email,
+        workspace_name=workspace.name,
+        inviter_name=(inviter.name if inviter is not None else user.name),
+        raw_token=raw_token,
+    )
     return ResendInvitationResponse(invitation=_invitation_dto(invitation, inviter))

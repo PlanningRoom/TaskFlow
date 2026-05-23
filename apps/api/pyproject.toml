@@ -19,6 +19,10 @@ dependencies = [
     "uuid-utils>=0.10.0",
     "broadcaster[postgres]>=0.3.1",
     "slowapi>=0.1.9",
+    "apscheduler>=3.10",
+    "aiosmtplib>=3.0",
+    "aioboto3>=13.0",
+    "jinja2>=3.1",
 ]
 
 [dependency-groups]
@@ -73,7 +77,15 @@ plugins = ["pydantic.mypy"]
 exclude = ["taskflow/db/migrations/versions"]
 
 [[tool.mypy.overrides]]
-module = ["broadcaster", "broadcaster.*", "uuid_utils"]
+module = [
+    "broadcaster",
+    "broadcaster.*",
+    "uuid_utils",
+    "apscheduler",
+    "apscheduler.*",
+    "aioboto3",
+    "aiosmtplib",
+]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -24,6 +24,7 @@ from taskflow.logging_config import RequestContextMiddleware, configure_logging
 from taskflow.rate_limit import limiter, rate_limit_exceeded_handler
 from taskflow.realtime.after_commit import AfterCommitPublishMiddleware
 from taskflow.realtime.bus import dispose_broadcaster, init_broadcaster
+from taskflow.scheduler import init_scheduler, shutdown_scheduler
 from taskflow.settings import settings
 
 logger = structlog.get_logger()
@@ -40,10 +41,13 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     configure_logging(settings.log_level)
     init_engine()
     await init_broadcaster()
+    scheduler = init_scheduler() if settings.scheduler_enabled else None
+    _app.state.scheduler = scheduler
     logger.info("app.startup", env=settings.app_env, version=__version__)
     try:
         yield
     finally:
+        shutdown_scheduler(scheduler)
         await dispose_broadcaster()
         await dispose_engine()
         logger.info("app.shutdown")

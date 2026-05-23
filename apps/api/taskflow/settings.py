@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -37,6 +39,20 @@ class Settings(BaseSettings):
     rate_limit_password_reset_per_email: str = "3/hour"  # noqa: S105
     rate_limit_invites_per_workspace: str = "20/hour"
     rate_limit_authenticated_default: str = "120/minute"
+
+    # Email (ADR 067). `smtp` → MailHog/SMTP in dev; `ses` → Amazon SES in prod.
+    email_backend: Literal["smtp", "ses"] = "smtp"
+    email_from: str = "no-reply@taskflow.local"
+    email_from_name: str = "TaskFlow"
+    smtp_host: str = "mailhog"
+    smtp_port: int = 1025
+    smtp_username: str | None = None
+    smtp_password: str | None = None
+    ses_region: str = "us-east-1"
+
+    # Background jobs / backups (ADR 069, 074).
+    scheduler_enabled: bool = True
+    s3_backups_bucket: str | None = None
 
     @property
     def cors_origins_list(self) -> list[str]:

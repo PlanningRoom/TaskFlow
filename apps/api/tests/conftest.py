@@ -11,8 +11,51 @@ from fastapi import Body, FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
+from taskflow.adapters.email import EmailMessage, set_email_sender
 from taskflow.errors import ConflictError, NotFoundError, PermissionDeniedError
 from taskflow.rate_limit import limiter
+
+
+class FakeEmailSender:
+    """In-memory recorder used in place of the SMTP/SES adapters in tests."""
+
+    def __init__(self) -> None:
+        self.sent: list[EmailMessage] = []
+        self.raise_on_send: Exception | None = None
+
+    async def send(self, msg: EmailMessage) -> None:
+        if self.raise_on_send is not None:
+            raise self.raise_on_send
+        self.sent.append(msg)
+
+
+@pytest.fixture
+def email_sender() -> Iterator[FakeEmailSender]:
+    """Inject a `FakeEmailSender` for the duration of the test."""
+    fake = FakeEmailSender()
+    set_email_sender(fake)
+    try:
+        yield fake
+    finally:
+        set_email_sender(None)
+
+
+@pytest.fixture(autouse=True)
+def _default_fake_email_sender(request: pytest.FixtureRequest) -> Iterator[None]:
+    """Replace the real email sender with a fake by default so tests that hit
+    invitation/password-reset endpoints don't try to reach a live SMTP server.
+
+    Tests that need to inspect sent mail should request the `email_sender`
+    fixture explicitly; this autouse fixture only installs a throwaway fake.
+    """
+    if "email_sender" in request.fixturenames:
+        yield
+        return
+    set_email_sender(FakeEmailSender())
+    try:
+        yield
+    finally:
+        set_email_sender(None)
 
 
 @pytest.fixture(autouse=True)
@@ -64,6 +107,8 @@ def client() -> Iterator[TestClient]:
         patch("taskflow.main.dispose_engine", new=AsyncMock()),
         patch("taskflow.main.init_broadcaster", new=AsyncMock(return_value=None)),
         patch("taskflow.main.dispose_broadcaster", new=AsyncMock()),
+        patch("taskflow.main.init_scheduler", new=MagicMock(return_value=None)),
+        patch("taskflow.main.shutdown_scheduler", new=MagicMock()),
     ):
         from taskflow.main import app
 
@@ -87,6 +132,8 @@ def unhealthy_client() -> Iterator[TestClient]:
         patch("taskflow.main.dispose_engine", new=AsyncMock()),
         patch("taskflow.main.init_broadcaster", new=AsyncMock(return_value=None)),
         patch("taskflow.main.dispose_broadcaster", new=AsyncMock()),
+        patch("taskflow.main.init_scheduler", new=MagicMock(return_value=None)),
+        patch("taskflow.main.shutdown_scheduler", new=MagicMock()),
     ):
         from taskflow.main import app
 
