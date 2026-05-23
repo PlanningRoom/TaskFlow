@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator, Iterator
-from unittest.mock import AsyncMock, patch
+from collections.abc import Iterator
+from unittest.mock import patch
 
 import pytest
-import pytest_asyncio
 from broadcaster import Broadcast
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -18,22 +17,32 @@ from taskflow.settings import settings
 from tests.integration._helpers import OWNER_PAYLOAD, make_user
 
 
-@pytest_asyncio.fixture
-async def _bus() -> AsyncIterator[Broadcast]:
+async def _init_memory_bus() -> Broadcast:
+    """Replacement for init_broadcaster that lives inside TestClient's loop.
+
+    Must run on the same event loop as the rest of the app — otherwise the
+    broadcaster's internal asyncio.Queue is bound to a different loop and any
+    `subscriber.get()` inside the WS handler hangs forever.
+    """
     bus = Broadcast("memory://")
     await bus.connect()
     bus_module._broadcaster = bus
-    yield bus
+    return bus
+
+
+async def _dispose_memory_bus() -> None:
+    bus = bus_module._broadcaster
     bus_module._broadcaster = None
-    await bus.disconnect()
+    if bus is not None:
+        await bus.disconnect()
 
 
 @pytest.fixture
-def ws_client(_bus: Broadcast) -> Iterator[TestClient]:
-    """TestClient with the broadcaster pre-initialized in-memory."""
+def ws_client() -> Iterator[TestClient]:
+    """TestClient with an in-memory broadcaster that boots in the app's loop."""
     with (
-        patch("taskflow.main.init_broadcaster", new=AsyncMock(return_value=_bus)),
-        patch("taskflow.main.dispose_broadcaster", new=AsyncMock()),
+        patch("taskflow.main.init_broadcaster", new=_init_memory_bus),
+        patch("taskflow.main.dispose_broadcaster", new=_dispose_memory_bus),
     ):
         from taskflow.main import app
 

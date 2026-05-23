@@ -7,12 +7,11 @@ All tests in this file require Postgres (auto-skipped when unreachable).
 from __future__ import annotations
 
 import json
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import Iterator
 from typing import Any
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
-import pytest_asyncio
 from broadcaster import Broadcast
 from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,21 +21,26 @@ from taskflow.settings import settings
 from tests.integration._helpers import OWNER_PAYLOAD
 
 
-@pytest_asyncio.fixture
-async def _bus() -> AsyncIterator[Broadcast]:
+async def _init_memory_bus() -> Broadcast:
+    """In-loop replacement for init_broadcaster (see test_ws_auth.py for why)."""
     bus = Broadcast("memory://")
     await bus.connect()
     bus_module._broadcaster = bus
-    yield bus
+    return bus
+
+
+async def _dispose_memory_bus() -> None:
+    bus = bus_module._broadcaster
     bus_module._broadcaster = None
-    await bus.disconnect()
+    if bus is not None:
+        await bus.disconnect()
 
 
 @pytest.fixture
-def ws_client(_bus: Broadcast) -> Iterator[TestClient]:
+def ws_client() -> Iterator[TestClient]:
     with (
-        patch("taskflow.main.init_broadcaster", new=AsyncMock(return_value=_bus)),
-        patch("taskflow.main.dispose_broadcaster", new=AsyncMock()),
+        patch("taskflow.main.init_broadcaster", new=_init_memory_bus),
+        patch("taskflow.main.dispose_broadcaster", new=_dispose_memory_bus),
     ):
         from taskflow.main import app
 
