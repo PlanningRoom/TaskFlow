@@ -60,7 +60,10 @@ def captured_tokens(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
         bag["password_reset"] = raw_token
 
     def _cap_invite(email: str, raw_token: str) -> None:
-        bag.setdefault("invitation", raw_token)
+        # Overwrite so the LATEST raw_token wins — resend_invitation rotates
+        # the token and invalidates the prior one. The accept-invitation step
+        # must use whichever token is currently valid.
+        bag["invitation"] = raw_token
 
     monkeypatch.setattr(auth_routes, "_dispatch_password_reset_email", _cap_reset)
     monkeypatch.setattr(workspace_routes, "_dispatch_invitation_email", _cap_invite)
