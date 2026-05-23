@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
 **Last Updated:** 2026-05-23
-**Current Phase:** Phase E1 — Security (in worktree `phase-e1-security`); Phase D2 — Background Jobs and Email (next)
+**Current Phase:** Phase D2 — Background Jobs and Email (next)
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -51,12 +51,12 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | B | Backend Core | 4 | 4 | 0 | 0 |
 | C | Backend Domain | 8 | 8 | 0 | 0 |
 | D | Backend Real-Time & Async | 2 | 1 | 0 | 0 |
-| E | Backend Hardening | 4 | 0 | 1 | 0 |
+| E | Backend Hardening | 4 | 1 | 0 | 0 |
 | F | Frontend Foundation | 4 | 0 | 0 | 0 |
 | G | Frontend Screens | 8 | 0 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 0 | 0 | 0 |
 | I | E2E, Infra, Deploy | 6 | 0 | 0 | 0 |
-| **Total** | | **42** | **14** | **1** | **0** |
+| **Total** | | **42** | **15** | **0** | **0** |
 
 ---
 
@@ -237,7 +237,7 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 
 ### Part E — Backend Hardening
 
-#### Phase E1 — Security: Rate Limiting, Headers, Audit Coverage `[~] In progress`
+#### Phase E1 — Security: Rate Limiting, Headers, Audit Coverage `[x] Complete`
 - [x] `slowapi` decorators on login, signup, password-reset request, invitation send
 - [x] 429 response uses ADR 043 envelope with `Retry-After`
 - [x] `infra/nginx/nginx.conf` with security headers per ADR 083
