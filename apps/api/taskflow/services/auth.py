@@ -38,7 +38,9 @@ class InvitationExpiredError(AppError):
 def _client_ip(request: Request | None) -> str | None:
     if request is None or request.client is None:
         return None
-    return request.client.host
+    from taskflow.auth.audit import coerce_ip
+
+    return coerce_ip(request.client.host)
 
 
 def _user_agent(request: Request | None) -> str | None:
