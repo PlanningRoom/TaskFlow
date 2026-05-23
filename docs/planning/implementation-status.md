@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
-**Last Updated:** 2026-05-16
-**Current Phase:** Phase D1 — Real-Time / WebSocket (next)
+**Last Updated:** 2026-05-23
+**Current Phase:** Phase D2 — Background Jobs and Email (next)
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -50,13 +50,13 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | A | Foundation | 1 | 1 | 0 | 0 |
 | B | Backend Core | 4 | 4 | 0 | 0 |
 | C | Backend Domain | 8 | 8 | 0 | 0 |
-| D | Backend Real-Time & Async | 2 | 0 | 0 | 0 |
+| D | Backend Real-Time & Async | 2 | 1 | 0 | 0 |
 | E | Backend Hardening | 4 | 0 | 0 | 0 |
 | F | Frontend Foundation | 4 | 0 | 0 | 0 |
 | G | Frontend Screens | 8 | 0 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 0 | 0 | 0 |
 | I | E2E, Infra, Deploy | 6 | 0 | 0 | 0 |
-| **Total** | | **42** | **13** | **0** | **0** |
+| **Total** | | **42** | **14** | **0** | **0** |
 
 ---
 
@@ -215,16 +215,16 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 
 ### Part D — Backend Real-Time and Async
 
-#### Phase D1 — Real-Time / WebSocket `[ ] Not started`
-- [ ] Add `broadcaster` with Postgres backend
-- [ ] `/ws` endpoint with session + CSRF auth
-- [ ] Channel subscriptions: `user:{id}`, `workspace:{id}`, `project:{id}` per access
-- [ ] Re-subscribe control message on access changes
-- [ ] `publish_event` helper (after-commit)
-- [ ] Wire publishing into all C-phase service mutations
-- [ ] Integration WS tests (mutate via API, assert receipt)
-- [ ] Cross-workspace leakage tests
-- [ ] 50-connection load smoke
+#### Phase D1 — Real-Time / WebSocket `[x] Complete`
+- [x] Add `broadcaster` with Postgres backend
+- [x] `/ws` endpoint with session + CSRF auth
+- [x] Channel subscriptions: `user:{id}`, `workspace:{id}`, `project:{id}` per access
+- [x] Re-subscribe control message on access changes
+- [x] `publish_event` helper (after-commit)
+- [x] Wire publishing into all C-phase service mutations
+- [x] Integration WS tests (mutate via API, assert receipt)
+- [x] Cross-workspace leakage tests
+- [ ] 50-connection load smoke — deferred to E3 (test-completion phase)
 
 #### Phase D2 — Background Jobs and Email `[ ] Not started`
 - [ ] APScheduler jobs (invitation expire, session cleanup, password-reset cleanup, pg_dump)
@@ -831,3 +831,55 @@ A spec-vs-build audit (PRD + screen inventory + TDD + ADRs + implementation-plan
 
 - `docker compose -f docker-compose.test.yml run --rm api-test` — **159 passed in 10.77s**.
 - ruff / ruff-format / mypy (via docker, `--cache-dir /tmp/mypy_cache`) — clean.
+
+### 2026-05-23 — Phase D1 complete
+
+**Files added (`apps/api/taskflow/realtime/`):** `bus.py`, `publish.py`, `channels.py`, `after_commit.py`, `__init__.py`. Plus `apps/api/taskflow/api/v1/ws.py` and `apps/api/tests/{unit/test_realtime.py, integration/test_ws_auth.py, integration/test_ws_events.py}`.
+
+**Files modified:** `apps/api/pyproject.toml` (+ `broadcaster[postgres]>=0.3.1`; mypy override for the untyped `broadcaster`/`uuid_utils` modules), `apps/api/uv.lock`, `apps/api/taskflow/main.py` (lifespan + WS route + after-commit middleware), `apps/api/taskflow/settings.py` (+ `realtime_enabled`), `apps/api/taskflow/db/session.py` (+ `session_scope` context manager for WS handlers), `apps/api/taskflow/services/{activity,notifications,tasks,comments,project_access}.py` (each scheduling publishes), `apps/api/tests/conftest.py` (patch the new broadcaster lifespan calls in the mocked-DB clients), `.env.example` (+ `REALTIME_ENABLED=true`).
+
+**Architecture:**
+- **Backend:** ADR 045 says Postgres LISTEN/NOTIFY via `broadcaster`. The singleton is initialized in the FastAPI lifespan (`init_broadcaster` / `dispose_broadcaster`) and exposed via `get_broadcaster()` — mirrors the `engine` lifecycle in `db/session.py`. `broadcaster` doesn't ship type stubs; the pyproject `[[tool.mypy.overrides]]` block silences `import-not-found` for it.
+- **Publish helper (`realtime/publish.py`):** Builds the TDD §10.2 envelope (`type`, `workspace_id`, `project_id`, `payload`, `emitted_at`) and serializes via `json.dumps(default=...)` to handle `UUID` + `datetime`. **Never raises** — `BroadcastError`/`Exception` is logged at `warning` and swallowed (TDD §10.4 at-most-once; clients reconcile via refetch).
+- **After-commit queue (`realtime/after_commit.py`):** `schedule_publish(request, callable)` appends a zero-arg async callable to `request.state.pending_publishes`. The `AfterCommitPublishMiddleware` (pure ASGI, registered before `RequestContextMiddleware`) drains the queue only when the response status is `< 400`. On 4xx/5xx the queue is dropped — by the time the middleware drains, the request handler's `await db.commit()` has already run, so publishes always go out *after* commit.
+- **Why endpoints/services don't publish directly:** services call `schedule_publish` so publishes are queued in the request scope but don't fire until after the response is sent. This keeps "publish after commit" honest without threading a contextvar.
+- **Why `functools.partial` (not lambdas) in services:** mypy strict can't infer the return type of `lambda` with default args capturing closures, but it does infer `partial(coro, **kwargs)` cleanly via typeshed overloads.
+
+**Publishing wiring (six event types from the D1 plan task list):**
+
+| Event type | Schedule point | Channel | Payload |
+|------------|----------------|---------|---------|
+| `task.created` | `services/tasks.py::create_task` end | `project:{pid}` | `{task_id, project_id, status}` |
+| `task.updated` | `services/tasks.py::update_task` end | `project:{pid}` | `{task_id, project_id, status}` |
+| `task.status_changed` | `services/tasks.py::change_status` end | `project:{pid}` | `{task_id, project_id, from, to}` |
+| `comment.created` | `services/comments.py::create_comment` end | `project:{pid}` | `{comment_id, task_id, project_id, author_id}` |
+| `notification.created` | `services/notifications.py::_schedule_notification_publish` (called from each `dispatch_for_*`) | `user:{recipient_id}` | `{notification_id, recipient_id, event_type, task_id, project_id}` |
+| `activity` | `services/activity.py::emit_activity` | `project:{pid}` if scoped, else `workspace:{wid}` | `{activity_id, event_type, actor_id, subject_type, subject_id, project_id}` |
+
+The activity/notification helpers all gained a `request: Request | None = None` kwarg; callers thread it through. `emit_activity` and `dispatch_for_*` now `await db.flush()` so the new row's id is in the publish payload.
+
+**Plus one control message:** `project_access.grant_access` / `revoke_access` schedule a `control.access_changed` envelope on `user:{target_user_id}` (TDD §10.1 step 4). The client responds by sending `{"type": "refresh_subscriptions"}` or by reconnecting (both conformant per TDD §10.4).
+
+**`/ws` endpoint (`api/v1/ws.py`):**
+- Registered at root `/ws` via `app.add_api_websocket_route` (TDD §10.1 explicitly says `wss://{host}/ws`, **not** `/api/v1/ws`).
+- Auth flow: read session cookie → `lookup_session` → CSRF check on the upgrade (the `csrf` query param + the `csrf_token` cookie must match each other and the session's bound bytes) → load `User`/`Workspace` (rejecting `deleted_at IS NOT NULL`) → enumerate visible project channels via `services.projects.list_visible_projects` → subscribe to `user:{id}`, `workspace:{id}`, `project:{id}` per accessible project.
+- Close codes: `4401` unauthenticated, `4403` CSRF failed, `4500` server error / realtime disabled.
+- Concurrency: one task per subscribed channel relays messages into a shared `asyncio.Queue`; a reader loop handles `ping` / `refresh_subscriptions` control messages; a writer loop drains the queue to the client. `asyncio.wait(..., FIRST_COMPLETED)` so reader exit (disconnect) tears the connection down. On `refresh_subscriptions` the channel set is re-computed and subscribers are restarted.
+- DB sessions inside the WS handler use a new helper `db.session.session_scope()` — an async-context-manager wrapper around `_session_factory` for code that runs outside a request scope (WS handlers, background jobs).
+
+**Decisions worth remembering:**
+- **CSRF on the WS upgrade is mandatory.** TDD §10.1 step 2 + ADR 051 — the upgrade is treated as a state-changing request. Connecting without `?csrf=<base64>` returns close code 4403.
+- **Memory-backed broadcaster for tests.** `broadcaster` ships a `memory://` backend; the WS integration tests inject it via `bus_module._broadcaster = bus`. The real Postgres LISTEN/NOTIFY round-trip is deferred to E3 (per plan), where seed data + a live Postgres are available.
+- **Load smoke (50 concurrent connections) is deferred to E3.** It's the one D1 task that genuinely needs a real Postgres broadcaster + meaningful test fixtures; lumping it with E3's performance smokes keeps the scope honest.
+- **CI mocked-DB tests need the broadcaster patched too.** Without it, `init_broadcaster` in the lifespan tries to resolve the docker hostname `db` and the whole `test_skeleton` suite errors. Root `conftest.py` `client` / `unhealthy_client` fixtures now also patch `taskflow.main.init_broadcaster` / `dispose_broadcaster`.
+
+**Quality gates (run locally):**
+- `uv run ruff check .` clean
+- `uv run ruff format --check .` clean
+- `uv run mypy taskflow tests` — 111 source files, strict, no issues
+- `uv run pytest -q` — **48 passed, 129 skipped** (DB-required tests auto-skip without Postgres; they run in CI)
+
+**Open follow-ups for D2/E:**
+- D2 will need its `BackgroundTasks` and APScheduler jobs to coexist with the realtime middleware — they should be transparent to it.
+- E3 picks up the 50-connection load smoke + the LISTEN/NOTIFY round-trip integration test.
+- E2 (observability) will add the `websocket_connections` gauge emitter — D1's connect/disconnect log lines (`ws.connected` / `ws.disconnected`) already carry `user_id` + `workspace_id`.

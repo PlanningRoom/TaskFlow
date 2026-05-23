@@ -8,6 +8,7 @@ returns the live instance once initialized.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
@@ -53,6 +54,16 @@ def get_engine() -> AsyncEngine:
 
 
 async def get_db() -> AsyncIterator[AsyncSession]:
+    if _session_factory is None:
+        init_engine()
+    assert _session_factory is not None
+    async with _session_factory() as session:
+        yield session
+
+
+@asynccontextmanager
+async def session_scope() -> AsyncIterator[AsyncSession]:
+    """Outside-of-request async session (for WS handlers, background jobs)."""
     if _session_factory is None:
         init_engine()
     assert _session_factory is not None

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import partial
 from uuid import UUID
 
 from fastapi import Request
@@ -12,6 +13,33 @@ from taskflow.auth.audit import write_audit_log
 from taskflow.db.models.project import Project, ProjectMembership
 from taskflow.db.models.user import User
 from taskflow.errors import ConflictError, NotFoundError
+from taskflow.realtime.after_commit import schedule_publish
+from taskflow.realtime.publish import publish_to_user
+
+
+def _schedule_access_changed(
+    request: Request | None,
+    target_user_id: UUID,
+    workspace_id: UUID,
+    project_id: UUID,
+    change: str,
+) -> None:
+    if request is None:
+        return
+    payload = {
+        "project_id": str(project_id),
+        "change": change,  # "granted" | "revoked"
+    }
+    schedule_publish(
+        request,
+        partial(
+            publish_to_user,
+            user_id=target_user_id,
+            workspace_id=workspace_id,
+            event_type="control.access_changed",
+            payload=payload,
+        ),
+    )
 
 
 async def list_project_members(db: AsyncSession, *, project: Project) -> list[User]:
@@ -67,6 +95,7 @@ async def grant_access(
         request=request,
         metadata={"user_id": str(target.id)},
     )
+    _schedule_access_changed(request, target.id, project.workspace_id, project.id, change="granted")
     return target
 
 
@@ -104,4 +133,7 @@ async def revoke_access(
         target_id=project.id,
         request=request,
         metadata={"user_id": str(target_user_id)},
+    )
+    _schedule_access_changed(
+        request, target_user_id, project.workspace_id, project.id, change="revoked"
     )

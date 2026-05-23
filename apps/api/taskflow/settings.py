@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     session_absolute_ttl_days: int = 30
     cookie_secure: bool = True  # Override to false in pure-localhost dev if needed.
 
+    # Real-time fan-out (ADR 044, 045; TDD §10).
+    realtime_enabled: bool = True
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]
