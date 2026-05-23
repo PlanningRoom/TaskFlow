@@ -12,6 +12,22 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel
 
 from taskflow.errors import ConflictError, NotFoundError, PermissionDeniedError
+from taskflow.rate_limit import limiter
+
+
+@pytest.fixture(autouse=True)
+def _disable_rate_limiter() -> Iterator[None]:
+    """Disable slowapi for every test by default.
+
+    Tests that exercise rate-limit behavior override this with a fixture that
+    re-enables the limiter and resets its storage.
+    """
+    limiter.enabled = False
+    try:
+        yield
+    finally:
+        limiter.enabled = False
+        limiter.reset()
 
 
 class _EchoPayload(BaseModel):

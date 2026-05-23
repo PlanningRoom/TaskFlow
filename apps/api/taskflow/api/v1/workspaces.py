@@ -17,6 +17,7 @@ from taskflow.auth.dependencies import (
 from taskflow.auth.permissions import Action
 from taskflow.db.models.invitation import Invitation
 from taskflow.db.models.user import User
+from taskflow.rate_limit import limiter, workspace_key
 from taskflow.schemas.auth import OkResponse
 from taskflow.schemas.invitations import (
     InvitationDTO,
@@ -35,6 +36,7 @@ from taskflow.schemas.workspaces import UpdateWorkspaceRequest, WorkspaceDTO
 from taskflow.services import invitations as invitation_service
 from taskflow.services import members as member_service
 from taskflow.services import workspaces as workspace_service
+from taskflow.settings import settings
 
 router = APIRouter(prefix="/workspaces", tags=["workspaces"])
 
@@ -194,6 +196,7 @@ async def list_invitations(db: DbDep, workspace: WorkspaceDep) -> ListInvitation
     response_model=SendInvitationResponse,
     dependencies=[Depends(verify_csrf), Depends(require_action(Action.INVITE_USERS))],
 )
+@limiter.limit(settings.rate_limit_invites_per_workspace, key_func=workspace_key)
 async def send_invitation(
     body: SendInvitationRequest,
     request: Request,

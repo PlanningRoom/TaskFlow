@@ -132,3 +132,26 @@ jobs:
       - name: pytest
         working-directory: apps/api
         run: uv run pytest -q
+
+  nginx-config:
+    name: nginx -t
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install nginx + snake-oil certs
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nginx ssl-cert
+
+      - name: Validate nginx.conf
+        run: |
+          # Production config references Let's Encrypt cert paths that don't exist
+          # on the runner. Substitute the system snake-oil cert so `nginx -t` can
+          # complete the cert load and exercise the rest of the config.
+          mkdir -p /tmp/nginx-test
+          sed \
+            -e 's|/etc/letsencrypt/live/taskflow/fullchain.pem|/etc/ssl/certs/ssl-cert-snakeoil.pem|' \
+            -e 's|/etc/letsencrypt/live/taskflow/privkey.pem|/etc/ssl/private/ssl-cert-snakeoil.key|' \
+            infra/nginx/nginx.conf > /tmp/nginx-test/nginx.conf
+          sudo nginx -t -c /tmp/nginx-test/nginx.conf

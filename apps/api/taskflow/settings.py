@@ -29,6 +29,15 @@ class Settings(BaseSettings):
     # Real-time fan-out (ADR 044, 045; TDD §10).
     realtime_enabled: bool = True
 
+    # Rate limits (ADR 052). slowapi-format strings; parsed by the limiter.
+    rate_limit_login_per_ip: str = "5/minute"
+    rate_limit_login_per_email: str = "10/minute"
+    rate_limit_signup_per_ip: str = "3/hour"
+    rate_limit_password_reset_per_ip: str = "3/hour"  # noqa: S105
+    rate_limit_password_reset_per_email: str = "3/hour"  # noqa: S105
+    rate_limit_invites_per_workspace: str = "20/hour"
+    rate_limit_authenticated_default: str = "120/minute"
+
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_allowed_origins.split(",") if origin.strip()]

@@ -450,7 +450,7 @@ Each Part C phase follows the same pattern: Pydantic DTOs, service layer, endpoi
 **Goal:** Sensitive endpoints are rate-limited; nginx security headers are authored; audit log coverage is verified to be complete.
 
 **Tasks:**
-- Apply `slowapi` decorators (ADR 052) to: `POST /auth/login` (5/min/IP, 20/hr/IP), `POST /auth/signup` (3/hr/IP), `POST /auth/password-reset/request` (3/hr/IP, 3/hr/email), `POST /workspaces/me/invitations` (10/hr/user). 429 responses follow ADR 043 envelope with `code: "RATE_LIMITED"` and `Retry-After` header.
+- Apply `slowapi` decorators (ADR 052) to: `POST /auth/login` (5/min/IP, 10/min/email), `POST /auth/signup` (3/hr/IP), `POST /auth/password-reset/request` (3/hr/IP, 3/hr/email), `POST /workspaces/me/invitations` (20/hr/workspace). 429 responses follow ADR 043 envelope with `code: "RATE_LIMITED"` and `Retry-After` header.
 - Author `infra/nginx/nginx.conf` with the security headers per ADR 083: strict CSP (no `unsafe-inline`/`unsafe-eval`), `frame-ancestors 'none'`, HSTS preload, `Referrer-Policy: strict-origin-when-cross-origin`, `X-Content-Type-Options: nosniff`.
 - Author the routing block: `/api/*` → api:8000, `/ws` → api:8000 (with upgrade), everything else → web:80.
 - Audit coverage check: walk the audit_log spec (ADR 084) and verify every event type is emitted by some service path. Add tests that drive the path and assert the row.
