@@ -5,10 +5,11 @@ from uuid import UUID
 from sqlalchemy import CheckConstraint, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
+from taskflow.constants import LABEL_COLORS
 from taskflow.db.models import Base, CreatedAtMixin, UUIDPKMixin
 
-# DRD §2.9 label palette (slugs). Migration `0001_initial.py` keeps the same list.
-LABEL_COLORS = ("blue", "green", "red", "purple", "amber", "pink", "cyan", "orange")
+__all__ = ["LABEL_COLORS", "Label", "TaskLabel"]
+
 _LABEL_COLOR_CHECK = "color IN (" + ", ".join(f"'{c}'" for c in LABEL_COLORS) + ")"
 
 

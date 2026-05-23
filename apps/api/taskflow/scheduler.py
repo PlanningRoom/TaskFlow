@@ -20,6 +20,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.interval import IntervalTrigger
 
+from taskflow.api.v1.ws import emit_websocket_connections_gauge
 from taskflow.services import cleanup
 
 logger = structlog.get_logger(__name__)
@@ -55,6 +56,16 @@ def init_scheduler() -> AsyncIOScheduler:
         cleanup.backup_database_to_s3,
         trigger=CronTrigger(hour=3, minute=0, timezone="UTC"),
         id="backup.pg_dump",
+        coalesce=True,
+        max_instances=1,
+        replace_existing=True,
+    )
+    # WebSocket connection gauge (TDD §13.2). Emitted every 15s so CloudWatch
+    # metric filters can read a recent value without scraping every event.
+    scheduler.add_job(
+        emit_websocket_connections_gauge,
+        trigger=IntervalTrigger(seconds=15),
+        id="metrics.websocket_connections",
         coalesce=True,
         max_instances=1,
         replace_existing=True,

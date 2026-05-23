@@ -22,6 +22,47 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 # stdlib loggers we explicitly bridge (their handlers are replaced).
 _BRIDGED_STDLIB_LOGGERS = ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi")
 
+# Keys whose values must never appear in logs (TDD §13.1). Names + emails +
+# Markdown bodies; passwords are included even though they shouldn't reach a
+# logger as a belt-and-braces guard. The processor replaces the value with
+# "[REDACTED]" rather than removing the key so the log shape stays stable.
+_SCRUB_KEYS: frozenset[str] = frozenset(
+    {
+        "email",
+        "name",
+        "display_name",
+        "password",
+        "current_password",
+        "new_password",
+        "description",
+        "body",
+        "comment",
+        "comment_body",
+        "task_description",
+    }
+)
+_REDACTED = "[REDACTED]"
+
+
+def _scrub_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {k: (_REDACTED if k in _SCRUB_KEYS else _scrub_value(v)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_scrub_value(v) for v in value]
+    if isinstance(value, tuple):
+        return tuple(_scrub_value(v) for v in value)
+    return value
+
+
+def scrub_pii(_logger: Any, _method_name: str, event_dict: dict[str, Any]) -> dict[str, Any]:
+    """Structlog processor that redacts PII fields in-place (TDD §13.1)."""
+    for key in list(event_dict.keys()):
+        if key in _SCRUB_KEYS:
+            event_dict[key] = _REDACTED
+        else:
+            event_dict[key] = _scrub_value(event_dict[key])
+    return event_dict
+
 
 def configure_logging(level: str = "info") -> None:
     """Configure structlog + bridge stdlib logs through structlog's ProcessorFormatter."""
@@ -35,6 +76,7 @@ def configure_logging(level: str = "info") -> None:
         timestamper,
         structlog.processors.StackInfoRenderer(),
         structlog.processors.format_exc_info,
+        scrub_pii,
     ]
 
     structlog.configure(

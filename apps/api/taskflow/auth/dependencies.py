@@ -6,6 +6,7 @@ from collections.abc import AsyncIterator, Callable, Coroutine
 from typing import Annotated, Any
 from uuid import UUID
 
+import structlog
 from fastapi import Depends, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,10 +56,18 @@ SessionDep = Annotated[SessionModel, Depends(current_session)]
 
 
 async def current_user(db: DbDep, session: SessionDep) -> User:
-    """Return the User behind the active session. Rejects deleted users (ADR 065)."""
+    """Return the User behind the active session. Rejects deleted users (ADR 065).
+
+    Binds `user_id` + `workspace_id` into the structlog context so every log
+    line emitted during the request carries the caller's identity (TDD §13.1).
+    """
     user = await db.scalar(select(User).where(User.id == session.user_id))
     if user is None or user.deleted_at is not None:
         raise _UnauthenticatedError("Authentication required.")
+    structlog.contextvars.bind_contextvars(
+        user_id=str(user.id),
+        workspace_id=str(user.workspace_id),
+    )
     return user
 
 

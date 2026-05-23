@@ -19,6 +19,7 @@ async def test_init_scheduler_registers_all_jobs() -> None:
             "cleanup.sessions",
             "cleanup.password_resets",
             "backup.pg_dump",
+            "metrics.websocket_connections",
         }
 
         invitations_job = scheduler.get_job("cleanup.invitations")

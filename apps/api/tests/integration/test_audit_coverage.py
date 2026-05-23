@@ -50,23 +50,29 @@ async def http(app: FastAPI) -> AsyncIterator[AsyncClient]:
 @pytest.fixture
 def captured_tokens(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     """Capture raw password-reset and invitation tokens that the endpoints
-    would otherwise only deliver by email."""
+    would otherwise only deliver by email.
+
+    Phase D2 routed email through `services.emails.send_{invitation,password_reset}_email`
+    which fan out via the email adapter. We replace those entry points at the
+    *import sites* (where the `BackgroundTasks.add_task` calls captured a name
+    binding) so the original templates / SMTP path don't run."""
     bag: dict[str, str] = {}
 
     from taskflow.api.v1 import auth as auth_routes
     from taskflow.api.v1 import workspaces as workspace_routes
 
-    def _cap_reset(email: str, raw_token: str) -> None:
+    async def _cap_reset(*, to: str, raw_token: str) -> None:
         bag["password_reset"] = raw_token
 
-    def _cap_invite(email: str, raw_token: str) -> None:
+    async def _cap_invite(
+        *, to: str, workspace_name: str, inviter_name: str, raw_token: str
+    ) -> None:
         # Overwrite so the LATEST raw_token wins — resend_invitation rotates
-        # the token and invalidates the prior one. The accept-invitation step
-        # must use whichever token is currently valid.
+        # the token and invalidates the prior one.
         bag["invitation"] = raw_token
 
-    monkeypatch.setattr(auth_routes, "_dispatch_password_reset_email", _cap_reset)
-    monkeypatch.setattr(workspace_routes, "_dispatch_invitation_email", _cap_invite)
+    monkeypatch.setattr(auth_routes, "send_password_reset_email", _cap_reset)
+    monkeypatch.setattr(workspace_routes, "send_invitation_email", _cap_invite)
     return bag
 
 

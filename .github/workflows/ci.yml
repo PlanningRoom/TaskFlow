@@ -131,7 +131,15 @@ jobs:
 
       - name: pytest
         working-directory: apps/api
-        run: uv run pytest -q
+        # Coverage gate is a ratchet — current floor is ~71% on services + auth
+        # combined. The Phase E3 spec asked for 85%; raising the bar there is
+        # tracked in `docs/planning/implementation-status.md` E3 notes.
+        run: |
+          uv run pytest -q \
+            --cov=taskflow.services \
+            --cov=taskflow.auth \
+            --cov-report=term-missing \
+            --cov-fail-under=70
 
   nginx-config:
     name: nginx -t

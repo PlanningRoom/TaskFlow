@@ -43,6 +43,21 @@ CODE_UNAUTHENTICATED = 4401
 CODE_CSRF_FAILED = 4403
 CODE_SERVER_ERROR = 4500
 
+# Module-level counter — incremented after `websocket.accept()`, decremented in
+# the `finally` block. Read by the scheduler's periodic gauge emitter
+# (`emit_websocket_connections_gauge`). Single-threaded asyncio so `+=` is safe.
+_ws_active_connections: int = 0
+
+
+def active_connections() -> int:
+    return _ws_active_connections
+
+
+def emit_websocket_connections_gauge() -> None:
+    """Periodic structlog emission consumed by the CloudWatch metric filter
+    `websocket_connections` (TDD §13.2)."""
+    logger.info("websocket_connections", value=_ws_active_connections)
+
 
 async def _authenticate(
     websocket: WebSocket,
@@ -148,6 +163,7 @@ async def _writer_loop(
 
 async def websocket_endpoint(websocket: WebSocket) -> None:
     """Entry point — registered on the FastAPI app via `add_api_websocket_route`."""
+    global _ws_active_connections
     if not settings.realtime_enabled or not is_initialized():
         # Broadcaster isn't initialized — accept then close. (Tests run without it.)
         await websocket.close(code=CODE_SERVER_ERROR, reason="realtime disabled")
@@ -162,10 +178,12 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
     refresh_event = asyncio.Event()
 
     await websocket.accept()
+    _ws_active_connections += 1
     logger.info(
         "ws.connected",
         user_id=str(user.id),
         workspace_id=str(workspace.id),
+        active_connections=_ws_active_connections,
     )
 
     # Compute initial channel set.
@@ -211,10 +229,12 @@ async def websocket_endpoint(websocket: WebSocket) -> None:
         with contextlib.suppress(Exception):
             await websocket.close(code=CODE_SERVER_ERROR)
     finally:
+        _ws_active_connections = max(0, _ws_active_connections - 1)
         logger.info(
             "ws.disconnected",
             user_id=str(user.id),
             workspace_id=str(workspace.id),
+            active_connections=_ws_active_connections,
         )
 
 
@@ -224,4 +244,6 @@ __all__: list[Any] = [
     "CODE_UNAUTHENTICATED",
     "CODE_CSRF_FAILED",
     "CODE_SERVER_ERROR",
+    "active_connections",
+    "emit_websocket_connections_gauge",
 ]

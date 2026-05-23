@@ -74,6 +74,20 @@ make dev
 
 Pre-commit hooks (`pre-commit install`) run Biome, Ruff, and a secret scan on staged files.
 
+### Seed credentials
+
+`make seed` populates the "Aurora Studio" demo workspace (one workspace, five users, three projects, ~30 tasks, ~10 comments). Re-running is a no-op.
+
+| Email | Display name | Role |
+|-------|--------------|------|
+| `owner@aurora.test` | Aurora Owens | Owner |
+| `admin@aurora.test` | Adam Min | Admin |
+| `dev1@aurora.test` | Dana Engineer | Member |
+| `dev2@aurora.test` | Mason Code | Member |
+| `viewer@aurora.test` | Vivian Watch | Viewer |
+
+Password for all five: `correct-horse-battery-staple`.
+
 
 
 ## YouTube Series

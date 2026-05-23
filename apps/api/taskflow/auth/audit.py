@@ -6,10 +6,13 @@ import ipaddress
 from typing import Any
 from uuid import UUID
 
+import structlog
 from fastapi import Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from taskflow.db.models.audit_log import AuditLog
+
+logger = structlog.get_logger("taskflow.audit")
 
 
 def coerce_ip(value: str | None) -> str | None:
@@ -58,4 +61,16 @@ async def write_audit_log(
         metadata_=metadata or {},
     )
     db.add(row)
+
+    # Mirror the event to stdlib logs so CloudWatch metric filters (TDD §13.2)
+    # can count occurrences without reaching into the database. The scrub
+    # processor in logging_config strips any PII from `metadata` before it
+    # hits the JSON renderer.
+    log_method = logger.warning if "failure" in event_type else logger.info
+    log_method(
+        event_type,
+        actor_id=str(actor_id) if actor_id else None,
+        target_id=str(target_id) if target_id else None,
+        metadata=metadata or {},
+    )
     return row

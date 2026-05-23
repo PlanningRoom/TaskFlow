@@ -7,10 +7,10 @@ from sqlalchemy import CheckConstraint, Computed, Date, ForeignKey, Index, Text
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column
 
+from taskflow.constants import TASK_PRIORITIES, TASK_STATUSES
 from taskflow.db.models import Base, TimestampsMixin, UUIDPKMixin
 
-TASK_STATUSES = ("backlog", "todo", "in_progress", "in_review", "done", "cancelled")
-TASK_PRIORITIES = ("none", "low", "medium", "high", "urgent")
+__all__ = ["TASK_PRIORITIES", "TASK_STATUSES", "Task"]
 
 
 class Task(UUIDPKMixin, TimestampsMixin, Base):

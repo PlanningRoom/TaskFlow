@@ -7,9 +7,10 @@ from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Index, Text, text
 from sqlalchemy.dialects.postgresql import CITEXT
 from sqlalchemy.orm import Mapped, mapped_column
 
+from taskflow.constants import USER_ROLES
 from taskflow.db.models import Base, TimestampsMixin, UUIDPKMixin
 
-USER_ROLES = ("owner", "admin", "member", "viewer")
+__all__ = ["USER_ROLES", "User"]
 
 
 class User(UUIDPKMixin, TimestampsMixin, Base):
