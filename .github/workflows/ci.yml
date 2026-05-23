@@ -146,12 +146,16 @@ jobs:
 
       - name: Validate nginx.conf
         run: |
-          # Production config references Let's Encrypt cert paths that don't exist
-          # on the runner. Substitute the system snake-oil cert so `nginx -t` can
-          # complete the cert load and exercise the rest of the config.
+          # Production config references Let's Encrypt cert paths and the
+          # docker-compose service names `api`/`web` that don't resolve on the
+          # runner. Substitute snake-oil certs and a loopback host so `nginx -t`
+          # can complete cert/upstream resolution and exercise the rest of the
+          # config. Prod parity is enforced in Phase I2 against the real image.
           mkdir -p /tmp/nginx-test
           sed \
             -e 's|/etc/letsencrypt/live/taskflow/fullchain.pem|/etc/ssl/certs/ssl-cert-snakeoil.pem|' \
             -e 's|/etc/letsencrypt/live/taskflow/privkey.pem|/etc/ssl/private/ssl-cert-snakeoil.key|' \
+            -e 's|server api:8000;|server 127.0.0.1:8000;|' \
+            -e 's|server web:80;|server 127.0.0.1:80;|' \
             infra/nginx/nginx.conf > /tmp/nginx-test/nginx.conf
           sudo nginx -t -c /tmp/nginx-test/nginx.conf

@@ -40,14 +40,15 @@ def ip_key(request: Request) -> str:
     return _client_ip(request)
 
 
-async def _read_body_field(request: Request, field: str) -> str | None:
-    """Peek at a JSON body field without consuming the stream for the route."""
-    # Cache the raw body on request.state so route handlers can still parse it.
-    cached: bytes | None = getattr(request.state, "_cached_body", None)
-    if cached is None:
-        cached = await request.body()
-        request.state._cached_body = cached
+def _read_body_field(request: Request, field: str) -> str | None:
+    """Peek at a JSON body field synchronously.
 
+    Safe because slowapi runs the limiter check *after* FastAPI has already
+    parsed the Pydantic body param — Starlette's `request._body` cache is
+    populated at that point. slowapi 0.1.9 calls key_funcs synchronously, so
+    we cannot `await request.body()` here.
+    """
+    cached: bytes | None = getattr(request, "_body", None)
     if not cached:
         return None
     try:
@@ -62,15 +63,15 @@ async def _read_body_field(request: Request, field: str) -> str | None:
 
 
 def email_key_factory(field: str = "email") -> Any:
-    """Build an async key_func that returns `email:<lower>` from the JSON body.
+    """Build a sync key_func that returns `email:<lower>` from the JSON body.
 
     Falls back to the client IP when the body has no usable email, so the limit
     still applies in pathological cases instead of becoming a global single
     bucket.
     """
 
-    async def _key(request: Request) -> str:
-        email = await _read_body_field(request, field)
+    def _key(request: Request) -> str:
+        email = _read_body_field(request, field)
         if email:
             return f"email:{email}"
         return f"ip:{_client_ip(request)}"

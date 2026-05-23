@@ -146,7 +146,7 @@ async def test_every_audit_event_is_emitted_by_some_flow(
         headers=csrf_headers(http),
     )
     assert r.status_code == 200, r.text
-    label_id = r.json()["label"]["id"]
+    label_id = r.json()["id"]
 
     # 11) PATCH /labels/:id -> workspace.label.updated
     r = await http.patch(
@@ -167,7 +167,7 @@ async def test_every_audit_event_is_emitted_by_some_flow(
         headers=csrf_headers(http),
     )
     assert r.status_code == 200, r.text
-    project_id = r.json()["project"]["id"]
+    project_id = r.json()["id"]
 
     # 14) PATCH /projects/:id -> project.updated
     r = await http.patch(
