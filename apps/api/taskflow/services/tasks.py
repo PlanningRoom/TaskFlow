@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, timedelta
+from functools import partial
 from typing import Any, cast
 from uuid import UUID
 
@@ -269,6 +270,7 @@ async def create_task(
         subject_type="task",
         subject_id=task.id,
         metadata={"title": title},
+        request=request,
     )
     if assignee_id is not None and assignee_id != actor.id:
         await emit_activity(
@@ -280,11 +282,34 @@ async def create_task(
             subject_type="task",
             subject_id=task.id,
             metadata={"assignee_id": str(assignee_id)},
+            request=request,
         )
     if assignee_id is not None:
         from taskflow.services.notifications import dispatch_for_assignment
 
-        await dispatch_for_assignment(db, actor=actor, task=task, new_assignee_id=assignee_id)
+        await dispatch_for_assignment(
+            db, actor=actor, task=task, new_assignee_id=assignee_id, request=request
+        )
+
+    if request is not None:
+        from taskflow.realtime.after_commit import schedule_publish
+        from taskflow.realtime.publish import publish_to_project
+
+        payload = {
+            "task_id": str(task.id),
+            "project_id": str(project_id),
+            "status": task.status,
+        }
+        schedule_publish(
+            request,
+            partial(
+                publish_to_project,
+                project_id=project_id,
+                workspace_id=actor.workspace_id,
+                event_type="task.created",
+                payload=payload,
+            ),
+        )
     return task
 
 
@@ -339,6 +364,7 @@ async def update_task(
                 subject_type="task",
                 subject_id=task.id,
                 metadata={"was_assignee_id": str(prev_assignee)},
+                request=request,
             )
         elif fields["assignee_id"] is not None:
             await emit_activity(
@@ -350,12 +376,37 @@ async def update_task(
                 subject_type="task",
                 subject_id=task.id,
                 metadata={"assignee_id": str(fields["assignee_id"])},
+                request=request,
             )
             from taskflow.services.notifications import dispatch_for_assignment
 
             await dispatch_for_assignment(
-                db, actor=actor, task=task, new_assignee_id=fields["assignee_id"]
+                db,
+                actor=actor,
+                task=task,
+                new_assignee_id=fields["assignee_id"],
+                request=request,
             )
+
+    if request is not None:
+        from taskflow.realtime.after_commit import schedule_publish
+        from taskflow.realtime.publish import publish_to_project
+
+        payload = {
+            "task_id": str(task.id),
+            "project_id": str(task.project_id),
+            "status": task.status,
+        }
+        schedule_publish(
+            request,
+            partial(
+                publish_to_project,
+                project_id=task.project_id,
+                workspace_id=actor.workspace_id,
+                event_type="task.updated",
+                payload=payload,
+            ),
+        )
     return task
 
 
@@ -382,13 +433,40 @@ async def change_status(
         subject_type="task",
         subject_id=task.id,
         metadata={"from": previous, "to": new_status},
+        request=request,
     )
 
     from taskflow.services.notifications import dispatch_for_status_change
 
     await dispatch_for_status_change(
-        db, actor=actor, task=task, previous_status=previous, new_status=new_status
+        db,
+        actor=actor,
+        task=task,
+        previous_status=previous,
+        new_status=new_status,
+        request=request,
     )
+
+    if request is not None:
+        from taskflow.realtime.after_commit import schedule_publish
+        from taskflow.realtime.publish import publish_to_project
+
+        payload = {
+            "task_id": str(task.id),
+            "project_id": str(task.project_id),
+            "from": previous,
+            "to": new_status,
+        }
+        schedule_publish(
+            request,
+            partial(
+                publish_to_project,
+                project_id=task.project_id,
+                workspace_id=actor.workspace_id,
+                event_type="task.status_changed",
+                payload=payload,
+            ),
+        )
     return task
 
 

@@ -8,9 +8,11 @@ suppression: if `actor.id == recipient.id`, no row is created.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from functools import partial
 from typing import Any
 from uuid import UUID
 
+from fastapi import Request
 from sqlalchemy import and_, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +21,8 @@ from taskflow.db.models.notification import Notification
 from taskflow.db.models.task import Task
 from taskflow.db.models.user import User
 from taskflow.errors import NotFoundError
+from taskflow.realtime.after_commit import schedule_publish
+from taskflow.realtime.publish import publish_to_user
 from taskflow.services._pagination import decode_cursor, encode_cursor
 
 DEFAULT_LIMIT = 30
@@ -48,6 +52,32 @@ def _row(
     )
 
 
+def _schedule_notification_publish(
+    request: Request | None,
+    row: Notification,
+    workspace_id: UUID,
+) -> None:
+    if request is None:
+        return
+    payload = {
+        "notification_id": str(row.id),
+        "recipient_id": str(row.recipient_id),
+        "event_type": row.event_type,
+        "task_id": str(row.task_id) if row.task_id else None,
+        "project_id": str(row.project_id) if row.project_id else None,
+    }
+    schedule_publish(
+        request,
+        partial(
+            publish_to_user,
+            user_id=row.recipient_id,
+            workspace_id=workspace_id,
+            event_type="notification.created",
+            payload=payload,
+        ),
+    )
+
+
 async def dispatch_for_comment(
     db: AsyncSession,
     *,
@@ -55,6 +85,7 @@ async def dispatch_for_comment(
     task: Task,
     comment: Comment,
     mentions: list[User],
+    request: Request | None = None,
 ) -> list[Notification]:
     """One row per mentioned user; one for assignee if applicable; de-dup
     so a mentioned-and-assigned recipient gets `mention` only.
@@ -93,6 +124,10 @@ async def dispatch_for_comment(
         db.add(row)
         created.append(row)
 
+    if created:
+        await db.flush()  # populate ids for the publish payload
+        for row in created:
+            _schedule_notification_publish(request, row, task.workspace_id)
     return created
 
 
@@ -102,6 +137,7 @@ async def dispatch_for_assignment(
     actor: User,
     task: Task,
     new_assignee_id: UUID,
+    request: Request | None = None,
 ) -> Notification | None:
     if new_assignee_id == actor.id:
         return None  # self-suppression
@@ -112,6 +148,8 @@ async def dispatch_for_assignment(
         task=task,
     )
     db.add(row)
+    await db.flush()
+    _schedule_notification_publish(request, row, task.workspace_id)
     return row
 
 
@@ -122,6 +160,7 @@ async def dispatch_for_status_change(
     task: Task,
     previous_status: str,
     new_status: str,
+    request: Request | None = None,
 ) -> Notification | None:
     if task.assignee_id is None or task.assignee_id == actor.id:
         return None
@@ -133,6 +172,8 @@ async def dispatch_for_status_change(
         metadata={"from": previous_status, "to": new_status},
     )
     db.add(row)
+    await db.flush()
+    _schedule_notification_publish(request, row, task.workspace_id)
     return row
 
 

@@ -1,17 +1,18 @@
 """Activity-event service (ADR 063, PRD §13.2 / §14).
 
-`emit_activity(...)` writes a row inside the caller's transaction. Real-time
-fan-out (`publish_event`) is intentionally NOT called here; D1 will add it.
-
-`list_activity(...)` lands in the C5 phase but the helper is colocated for
-locality.
+`emit_activity(...)` writes a row inside the caller's transaction. When passed
+the active `request`, it also schedules an after-commit broadcast to the
+project channel (or workspace channel for workspace-scoped events) per TDD
+§10.2.
 """
 
 from __future__ import annotations
 
+from functools import partial
 from typing import Any
 from uuid import UUID
 
+from fastapi import Request
 from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,6 +21,8 @@ from taskflow.db.models.activity_event import ActivityEvent
 from taskflow.db.models.project import ProjectMembership
 from taskflow.db.models.user import User
 from taskflow.errors import NotFoundError
+from taskflow.realtime.after_commit import schedule_publish
+from taskflow.realtime.publish import publish_to_project, publish_to_workspace
 from taskflow.services._pagination import decode_cursor, encode_cursor
 
 DEFAULT_LIMIT = 20
@@ -36,6 +39,7 @@ async def emit_activity(
     subject_type: str,
     subject_id: UUID,
     metadata: dict[str, Any] | None = None,
+    request: Request | None = None,
 ) -> ActivityEvent:
     row = ActivityEvent(
         workspace_id=workspace_id,
@@ -47,6 +51,38 @@ async def emit_activity(
         metadata_=metadata or {},
     )
     db.add(row)
+    await db.flush()  # row.id needed for the publish payload
+
+    if request is not None:
+        payload = {
+            "activity_id": str(row.id),
+            "event_type": event_type,
+            "actor_id": str(actor.id),
+            "subject_type": subject_type,
+            "subject_id": str(subject_id),
+            "project_id": str(project_id) if project_id else None,
+        }
+        if project_id is not None:
+            schedule_publish(
+                request,
+                partial(
+                    publish_to_project,
+                    project_id=project_id,
+                    workspace_id=workspace_id,
+                    event_type="activity",
+                    payload=payload,
+                ),
+            )
+        else:
+            schedule_publish(
+                request,
+                partial(
+                    publish_to_workspace,
+                    workspace_id=workspace_id,
+                    event_type="activity",
+                    payload=payload,
+                ),
+            )
     return row
 
 

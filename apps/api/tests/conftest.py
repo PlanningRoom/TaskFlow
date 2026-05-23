@@ -46,6 +46,8 @@ def client() -> Iterator[TestClient]:
         patch("taskflow.main.init_engine", return_value=fake_engine),
         patch("taskflow.main.get_engine", return_value=fake_engine),
         patch("taskflow.main.dispose_engine", new=AsyncMock()),
+        patch("taskflow.main.init_broadcaster", new=AsyncMock(return_value=None)),
+        patch("taskflow.main.dispose_broadcaster", new=AsyncMock()),
     ):
         from taskflow.main import app
 
@@ -67,6 +69,8 @@ def unhealthy_client() -> Iterator[TestClient]:
         patch("taskflow.main.init_engine", return_value=fake_engine),
         patch("taskflow.main.get_engine", return_value=fake_engine),
         patch("taskflow.main.dispose_engine", new=AsyncMock()),
+        patch("taskflow.main.init_broadcaster", new=AsyncMock(return_value=None)),
+        patch("taskflow.main.dispose_broadcaster", new=AsyncMock()),
     ):
         from taskflow.main import app
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from functools import partial
 from uuid import UUID
 
 from fastapi import Request
@@ -64,11 +65,35 @@ async def create_comment(
             "task_id": str(task_id),
             "preview": body[:120],
         },
+        request=request,
     )
 
     from taskflow.services.notifications import dispatch_for_comment
 
-    await dispatch_for_comment(db, actor=actor, task=task, comment=comment, mentions=mentions)
+    await dispatch_for_comment(
+        db, actor=actor, task=task, comment=comment, mentions=mentions, request=request
+    )
+
+    if request is not None:
+        from taskflow.realtime.after_commit import schedule_publish
+        from taskflow.realtime.publish import publish_to_project
+
+        payload = {
+            "comment_id": str(comment.id),
+            "task_id": str(task.id),
+            "project_id": str(task.project_id),
+            "author_id": str(actor.id),
+        }
+        schedule_publish(
+            request,
+            partial(
+                publish_to_project,
+                project_id=task.project_id,
+                workspace_id=actor.workspace_id,
+                event_type="comment.created",
+                payload=payload,
+            ),
+        )
     return comment, mentions, task
 
 
