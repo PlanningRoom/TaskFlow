@@ -13,7 +13,16 @@
 
 **Decision:** Synchronous.
 
-Flow when a notification-triggering event occurs (comment with @mention, task assignment, status change on someone's task, comment on someone's task):
+The four notification-triggering events (PRD §15.1) are implemented across three dispatcher functions in `taskflow/services/notifications.py`:
+
+| Trigger | Dispatcher function | Notification `event_type` |
+|---------|---------------------|---------------------------|
+| Comment contains `@mention` | `dispatch_for_comment` | `mention` |
+| Comment posted on a task the recipient is assigned to | `dispatch_for_comment` | `task_commented` |
+| Task assigned (or reassigned) to a user | `dispatch_for_assignment` | `task_assigned` |
+| Status change on a task the recipient is assigned to | `dispatch_for_status_change` | `task_status_changed` |
+
+Flow when any of these triggers fires:
 
 1. Mutation's DB transaction inserts the primary row (comment, task update) AND the corresponding `notifications` rows (Decision 064) AND the `activity_events` row (Decision 063).
 2. On transaction commit, a Postgres `NOTIFY notifications, '{recipient_id}'` fires per recipient.

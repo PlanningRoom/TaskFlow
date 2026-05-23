@@ -14,13 +14,15 @@
 
 **Decision:** Nightly `pg_dump` to S3.
 
-- APScheduler (Decision 069) runs `pg_dump --format=custom --compress=9` daily at 03:00 UTC.
-- Dump written to `s3://taskflow-backups-{account}-{region}/postgres/YYYY-MM-DD/taskflow.dump`.
+- APScheduler (Decision 069) runs `pg_dump --no-owner --no-privileges` daily at 03:00 UTC; the stdout stream is gzipped in memory before upload (equivalent to `pg_dump … | gzip -9 > taskflow.sql.gz`). Plain-SQL output was chosen over `--format=custom` so the dump is human-readable on `aws s3 cp` and `psql < restore.sql` works without `pg_restore`.
+- Dump written to `s3://taskflow-backups-{account}-{region}/backups/YYYY/MM/DD/taskflow-YYYYMMDDTHHMMSSZ.sql.gz`. The intra-day timestamp suffix lets a one-off operator-triggered backup coexist with the nightly run.
 - S3 lifecycle rule: retain 30 days, then expire.
 - Bucket versioned and encrypted with SSE-S3.
 - IAM role on EC2 grants `s3:PutObject` only to this path prefix.
 
-**RPO:** 24 hours. **RTO:** ~1 hour (spin up fresh Postgres container, `aws s3 cp` the dump, `pg_restore`).
+**RPO:** 24 hours. **RTO:** ~1 hour (spin up fresh Postgres container, `aws s3 cp` the dump, `gunzip | psql`).
+
+**Dev posture:** when `S3_BACKUPS_BUCKET` is unset the scheduled job logs `backup.skipped reason=bucket_unset` and returns — `make dev` therefore runs the scheduler without ever shelling out to `pg_dump`.
 
 Restore procedure will be documented in `docs/operations/restore.md` during implementation.
 

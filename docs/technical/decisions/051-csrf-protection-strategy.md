@@ -19,6 +19,11 @@
 4. Server middleware validates that header value equals the cookie value and matches the active session's CSRF binding. Mismatch → 403.
 5. Safe methods (GET, HEAD, OPTIONS) skip the check.
 
-WebSocket upgrades rely on the session cookie + a CSRF token in the initial upgrade query parameter.
+WebSocket upgrades rely on the session cookie + a CSRF token in the initial upgrade query parameter (`?csrf=…`). The server treats the upgrade as a state-changing request and runs the same `csrf_check(method="POST", header_token, cookie_token, session)` helper as the REST endpoints.
+
+WebSocket close codes (RFC 6455 application-defined range 4000–4999):
+- `4401` — unauthenticated (no/invalid session)
+- `4403` — CSRF check failed
+- `4500` — unexpected server error during setup
 
 **Rationale:** `SameSite=Lax` alone blocks most CSRF, but a double-submit token costs almost nothing and defends against same-site sub-domain takeovers and top-level navigation edge cases. The cookie-echo pattern avoids server-side storage of per-request tokens.

@@ -366,7 +366,7 @@ TanStack Router owns the URL. Route definitions mirror the page inventory in DRD
 ```
 /login
 /signup
-/accept-invite
+/invitations/:token
 /                               → redirects to /dashboard if authed
 /dashboard
 /projects/:projectId            → board view (default)
@@ -544,6 +544,7 @@ Two mechanisms, no separate worker process:
 | Delete expired sessions | daily at 04:00 UTC |
 | Delete expired password-reset tokens | daily at 04:00 UTC |
 | `pg_dump` to S3 | daily at 03:00 UTC |
+| Emit `websocket_connections` gauge | every 15 seconds |
 
 ---
 
@@ -880,6 +881,11 @@ Dashboard:
    - For each project the user has access to, `project:{project_id}` — for board and task updates.
 4. On any project-access change (e.g., an admin grants or revokes access), the server sends a control message; the client reconnects to refresh its subscriptions.
 
+WebSocket close codes (RFC 6455 application-defined range 4000–4999):
+- `4401` — unauthenticated (no/invalid session).
+- `4403` — CSRF check failed (missing/mismatched token in the upgrade query string).
+- `4500` — unexpected server error during setup (e.g. broadcaster not initialised).
+
 ### 10.2 Publishing (ADR 045, 070)
 
 Mutation flow:
@@ -900,7 +906,7 @@ Envelope:
   "workspace_id": "...",
   "project_id": "...",
   "payload": { ... task-shaped DTO ... },
-  "emitted_at": "2026-04-19T18:22:00Z"
+  "emitted_at": "2026-04-19T18:22:00.123456+00:00"
 }
 ```
 
@@ -1031,7 +1037,7 @@ Dependabot + CodeQL + Secret Scanning on the repo. A weekly triage cadence revie
   - `/taskflow/prod/web`
   - `/taskflow/prod/db`
 - Retention: 30 days.
-- PII never logged — emails, names, and Markdown bodies are scrubbed or omitted.
+- PII never logged. A structlog processor (`scrub_pii` in `logging_config.py`) substitutes `[REDACTED]` for the following keys at any depth in the event dict: `email`, `name`, `display_name`, `password`, `current_password`, `new_password`, `description`, `body`, `comment`, `comment_body`, `task_description`. Passwords are in the list as a belt-and-braces guard even though they should never reach a logger; the key list is intended to be one edit away (`_SCRUB_KEYS`).
 
 ### 13.2 Metrics
 
@@ -1041,7 +1047,7 @@ Dependabot + CodeQL + Secret Scanning on the repo. A weekly triage cadence revie
   - `4xx_count` — count of `status` in `[400, 500)`.
   - `error_count` — count of lines with `level = "ERROR"`.
   - `login_failure_count` — count of `event = "auth.login.failure"`.
-  - `websocket_connections` — gauge emitted periodically by the API.
+  - `websocket_connections` — gauge emitted every 15 seconds by the API (APScheduler `IntervalTrigger`, registered as job `metrics.websocket_connections` per §7.4). The log line carries `value: <current_count>`.
 
 ### 13.3 Alarms (ADR 077)
 

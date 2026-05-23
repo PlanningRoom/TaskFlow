@@ -17,6 +17,6 @@
 
 **Integration tests hit a real Postgres** — via the `db` service in a `docker-compose.test.yml` stack that CI spins up. No mocked database. Each test runs inside a transaction that is rolled back at the end, via a pytest fixture.
 
-**Coverage target:** ≥70% on business-logic modules (auth, permissions, notifications, activity). Not enforced by a hard CI gate — serves as a directional signal.
+**Coverage target:** ≥70% on `taskflow.auth` and `taskflow.services`, enforced as a hard CI gate (`--cov-fail-under=70`) in `.github/workflows/ci.yml`. Current floor sits at 71.06%. The Phase E3 implementation plan asked for 85%; raising the bar there is tracked as a pre-launch follow-up in `docs/planning/implementation-status.md` (E3 notes) rather than blocking Part F.
 
 **Rationale:** Vitest/pytest are the modern defaults for their respective ecosystems. Hitting a real Postgres is a non-negotiable pattern for TaskFlow — the workspace-scoped permission filters, full-text-search queries, and `LISTEN/NOTIFY` behavior are exactly the kind of code where mocked databases pass while production breaks.
