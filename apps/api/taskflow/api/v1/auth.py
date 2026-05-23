@@ -12,6 +12,7 @@ from taskflow.auth.dependencies import (
     verify_csrf,
 )
 from taskflow.db.models.user import User
+from taskflow.rate_limit import email_key_factory, ip_key, limiter
 from taskflow.schemas.auth import (
     AcceptInvitationRequest,
     AcceptInvitationResponse,
@@ -29,6 +30,9 @@ from taskflow.schemas.auth import (
 from taskflow.schemas.users import CurrentUser, current_user_dto
 from taskflow.services import auth as auth_service
 from taskflow.settings import settings
+
+_login_email_key = email_key_factory("email")
+_reset_email_key = email_key_factory("email")
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -75,7 +79,7 @@ def _to_current_user(user: User) -> CurrentUser:
 
 
 @router.post("/signup", response_model=SignupResponse)
-# TODO(E1): apply slowapi rate-limit decorator (3/hour per IP) per ADR 052.
+@limiter.limit(settings.rate_limit_signup_per_ip, key_func=ip_key)
 async def signup(
     body: SignupRequest, request: Request, response: Response, db: DbDep
 ) -> SignupResponse:
@@ -93,7 +97,8 @@ async def signup(
 
 
 @router.post("/login", response_model=LoginResponse)
-# TODO(E1): apply slowapi rate-limit decorator (5/min per IP, 10/min per email) per ADR 052.
+@limiter.limit(settings.rate_limit_login_per_ip, key_func=ip_key)
+@limiter.limit(settings.rate_limit_login_per_email, key_func=_login_email_key)
 async def login(
     body: LoginRequest, request: Request, response: Response, db: DbDep
 ) -> LoginResponse:
@@ -127,7 +132,8 @@ async def logout(
 
 
 @router.post("/password-reset/request", response_model=OkResponse)
-# TODO(E1): apply slowapi rate-limit decorator (3/hour per IP, 3/hour per email) per ADR 052.
+@limiter.limit(settings.rate_limit_password_reset_per_ip, key_func=ip_key)
+@limiter.limit(settings.rate_limit_password_reset_per_email, key_func=_reset_email_key)
 async def password_reset_request(
     body: PasswordResetRequest,
     request: Request,

@@ -9,6 +9,8 @@ import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.responses import JSONResponse
@@ -19,6 +21,7 @@ from taskflow.api.v1.ws import websocket_endpoint
 from taskflow.db.session import dispose_engine, get_engine, init_engine
 from taskflow.errors import register_exception_handlers
 from taskflow.logging_config import RequestContextMiddleware, configure_logging
+from taskflow.rate_limit import limiter, rate_limit_exceeded_handler
 from taskflow.realtime.after_commit import AfterCommitPublishMiddleware
 from taskflow.realtime.bus import dispose_broadcaster, init_broadcaster
 from taskflow.settings import settings
@@ -55,7 +58,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.state.limiter = limiter
+# Middleware registers innermost-first; request flow is the reverse:
+# CORS → RequestContext → SlowAPI → AfterCommitPublish → route.
 app.add_middleware(AfterCommitPublishMiddleware)
+app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -67,6 +74,7 @@ app.add_middleware(
 )
 
 register_exception_handlers(app)
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
 app.include_router(api_router, prefix="/api/v1")
 
 # WebSocket lives at root /ws per TDD §10.1 (not under /api/v1).

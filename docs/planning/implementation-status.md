@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
 **Last Updated:** 2026-05-23
-**Current Phase:** Phase D2 — Background Jobs and Email (next)
+**Current Phase:** Phase E1 — Security (in worktree `phase-e1-security`); Phase D2 — Background Jobs and Email (next)
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -51,12 +51,12 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | B | Backend Core | 4 | 4 | 0 | 0 |
 | C | Backend Domain | 8 | 8 | 0 | 0 |
 | D | Backend Real-Time & Async | 2 | 1 | 0 | 0 |
-| E | Backend Hardening | 4 | 0 | 0 | 0 |
+| E | Backend Hardening | 4 | 0 | 1 | 0 |
 | F | Frontend Foundation | 4 | 0 | 0 | 0 |
 | G | Frontend Screens | 8 | 0 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 0 | 0 | 0 |
 | I | E2E, Infra, Deploy | 6 | 0 | 0 | 0 |
-| **Total** | | **42** | **14** | **0** | **0** |
+| **Total** | | **42** | **14** | **1** | **0** |
 
 ---
 
@@ -237,13 +237,13 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 
 ### Part E — Backend Hardening
 
-#### Phase E1 — Security: Rate Limiting, Headers, Audit Coverage `[ ] Not started`
-- [ ] `slowapi` decorators on login, signup, password-reset request, invitation send
-- [ ] 429 response uses ADR 043 envelope with `Retry-After`
-- [ ] `infra/nginx/nginx.conf` with security headers per ADR 083
-- [ ] nginx routing block (api / ws / web)
-- [ ] `nginx -t` runs in CI
-- [ ] Audit-coverage walkthrough vs ADR 084 with tests for each event type
+#### Phase E1 — Security: Rate Limiting, Headers, Audit Coverage `[~] In progress`
+- [x] `slowapi` decorators on login, signup, password-reset request, invitation send
+- [x] 429 response uses ADR 043 envelope with `Retry-After`
+- [x] `infra/nginx/nginx.conf` with security headers per ADR 083
+- [x] nginx routing block (api / ws / web)
+- [x] `nginx -t` runs in CI
+- [x] Audit-coverage walkthrough vs ADR 084 with tests for each event type
 
 #### Phase E2 — Observability `[ ] Not started`
 - [ ] Request-ID middleware (UUIDv7 in `X-Request-Id`)
@@ -883,3 +883,43 @@ The activity/notification helpers all gained a `request: Request | None = None` 
 - D2 will need its `BackgroundTasks` and APScheduler jobs to coexist with the realtime middleware — they should be transparent to it.
 - E3 picks up the 50-connection load smoke + the LISTEN/NOTIFY round-trip integration test.
 - E2 (observability) will add the `websocket_connections` gauge emitter — D1's connect/disconnect log lines (`ws.connected` / `ws.disconnected`) already carry `user_id` + `workspace_id`.
+
+### 2026-05-23 — Phase E1 in progress (rebased onto D1)
+
+**Worktree:** `phase-e1-security` (branch `worktree-phase-e1-security`). Originally developed in parallel with Part D; rebased onto `main` after D1 (#15) landed. The reconciliation merged D1's lifespan/middleware/settings changes with E1's slowapi additions — see "Middleware order" below.
+
+**Threshold reconciliation:** The §E1 task list in `implementation-plan.md` disagreed with ADR 052 + `.env.example` on two endpoints. The ADR + env knobs are authoritative. The plan text has been updated:
+- Login: `5/min/IP` + `10/min/email` (was `5/min/IP` + `20/hr/IP`).
+- Invitations: `20/hr/workspace` (was `10/hr/user`).
+
+**Files added:**
+- `apps/api/taskflow/rate_limit.py` — `Limiter` instance, `ip_key` (honors `X-Forwarded-For`), `email_key_factory` (peeks the JSON body), `workspace_key` (uses `request.state.workspace_id` if present, else the session-cookie value, else IP), and `rate_limit_exceeded_handler` which translates `RateLimitExceeded → RateLimitedError` so the ADR 043 envelope + `Retry-After` flow through the existing handler.
+- `infra/nginx/nginx.conf` — HTTP→HTTPS redirect block, TLS server block with the ADR 083 headers (HSTS preload, strict CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`), routing for `/api/*`, `/ws` (with `Upgrade`/`Connection` and 3600s read timeout), `/health`, and an SPA fallback to the web container. Certificate paths reference Let's Encrypt's default layout; certbot issuance is deferred to Phase I2.
+- `apps/api/tests/integration/test_rate_limits.py` — 5 cases covering signup per-IP, login per-IP-across-emails, login per-email-across-IPs (via rotated `X-Forwarded-For`), password-reset per-IP, and invitations per-workspace.
+- `apps/api/tests/integration/test_audit_coverage.py` — single sweep that drives every endpoint that should write an audit row, then asserts `SELECT DISTINCT event_type FROM audit_log == set(AUDIT_EVENT_TYPES)`. Plus a static guard that `AUDIT_EVENT_TYPES` and the model's CHECK SQL stay in sync.
+
+**Files modified:**
+- `apps/api/pyproject.toml`, `apps/api/uv.lock` — added `slowapi>=0.1.9` (pulls in `limits`, `deprecated`, `wrapt`). Sits alongside D1's `broadcaster[postgres]>=0.3.1`.
+- `apps/api/taskflow/settings.py` — typed `rate_limit_*` fields populated from the existing `.env.example` knobs. Sits alongside D1's `realtime_enabled`.
+- `apps/api/taskflow/main.py` — `app.state.limiter` + `SlowAPIMiddleware` registered; `RateLimitExceeded` handler wired after `register_exception_handlers` so our envelope wins. **Middleware order (after D1 rebase):** registered innermost-first as `AfterCommitPublishMiddleware` (D1) → `SlowAPIMiddleware` (E1) → `RequestContextMiddleware` → `CORSMiddleware`. Request flow is the reverse, so CORS sees the request first, then logging context binds, then the limiter decides whether to reject, and only on success does the after-commit publish queue wrap the route.
+- `apps/api/taskflow/api/v1/auth.py` — decorators on `signup`, `login` (composite IP + email), `password_reset_request` (composite IP + email). E1 TODOs removed.
+- `apps/api/taskflow/api/v1/workspaces.py` — decorator on `send_invitation` (per-workspace).
+- `apps/api/tests/conftest.py` — autouse fixture that disables the limiter for every test by default and `reset()`s it on teardown; the rate-limit suite re-enables it explicitly.
+- `.github/workflows/ci.yml` — new `nginx-config` job that installs nginx + `ssl-cert` on Ubuntu, sed-substitutes the Let's Encrypt cert paths to the snake-oil paths, and runs `nginx -t`.
+- `docs/planning/implementation-plan.md` — §E1 task list reconciled with ADR 052.
+
+**Decisions worth remembering:**
+- The limiter handler is wired **after** `register_exception_handlers` so the global handler chain is unchanged; only the new `RateLimitExceeded` type gets the slowapi-specific translation.
+- `workspace_key`'s primary strategy is `request.state.workspace_id` — currently nothing populates that yet, so the fallback (session-cookie value) carries the load. If a future change wants a strictly-per-workspace bucket across multiple admins, set `request.state.workspace_id` in the `WorkspaceDep` resolver.
+- The audit-coverage test is one walkthrough rather than 22 parametrized cases because the assertion is naturally a set-equality at the end. Per-event tests already exist in the dedicated endpoint files (`test_auth_endpoints.py`, `test_invitation_endpoints.py`, …); this sweep proves the *contract*.
+
+**Verification done in this session:**
+- `uv run ruff check . && uv run ruff format --check . && uv run mypy taskflow tests` — clean (104 files).
+- `uv run pytest -q` — 40 passed, 119 skipped (Postgres-backed tests skip without DB). Existing tests unaffected by the limiter (autouse `disabled=False` fixture).
+- New tests collect: 2 audit-coverage + 5 rate-limit.
+- `nginx -t` not run locally (no nginx installed); CI's `nginx-config` job will validate.
+
+**Still TODO before this phase flips to `[x] Complete`:**
+- Re-run full quality gates after rebase (`ruff`, `mypy`, `pytest`) — D1 added 8 source files + the broadcaster mypy override, so the file count and skip count change.
+- CI run on the worktree branch (green `nginx-config` + `tests` jobs).
+- Manual smoke: `docker compose up`, hit `POST /auth/login` 6× quickly, confirm 429 + ADR 043 envelope + `Retry-After`.

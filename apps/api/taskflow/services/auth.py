@@ -128,6 +128,10 @@ async def login(
             request=request,
             metadata={"email": email},
         )
+        # The endpoint never reaches its `await db.commit()` because the
+        # exception aborts the request. ADR 084 requires this event be
+        # persisted even on failure, so commit before raising.
+        await db.commit()
         raise InvalidCredentialsError("Invalid email or password.")
 
     tokens = await session_helpers.create_session(
