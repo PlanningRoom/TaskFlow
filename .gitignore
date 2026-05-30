@@ -33,6 +33,9 @@ htmlcov/
 .vscode/
 *.swp
 
+# Claude Code (local session state, scheduled-task locks, etc.)
+.claude/
+
 # OS
 Thumbs.db
 
