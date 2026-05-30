@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
-**Last Updated:** 2026-05-23
-**Current Phase:** Phase F1 — Frontend Skeleton (next; opens Dependabot frontend majors window)
+**Last Updated:** 2026-05-30
+**Current Phase:** Phase F1 — Frontend Skeleton (next; Dependabot frontend majors window now closed — see Notes 2026-05-30)
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -26,7 +26,7 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 
 - **Cadence:** Review and merge open Dependabot PRs only at **phase boundaries** (when a phase flips to `[x] Complete`). Do not interrupt an in-progress phase to triage Dependabot, even for security advisories — they wait at most one phase.
 - **Patch/minor (incl. security):** Merge at the next phase boundary if CI is green.
-- **Majors:** Defer through Parts D and E. The **majors window is immediately before Phase F1 starts** — take all accumulated frontend majors together so React/Vite/plugin-react interact in one rebase, not three.
+- **Majors:** Defer through Parts D and E. The **majors window is immediately before Phase F1 starts** — take all accumulated frontend majors together so React/Vite/plugin-react interact in one rebase, not three. **Executed 2026-05-30 (PR #19); see Notes.**
 - **Why:** Frontend code does not exist yet; frontend major bumps are lock-file-only changes today and become code-migration projects once Part F lands components.
 - **Auto-merge:** Off. Every Dependabot PR is merged manually after review. Revisit at launch.
 
@@ -275,7 +275,7 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 ### Part F — Frontend Foundation
 
 #### Phase F1 — Frontend Skeleton `[ ] Not started`
-- [ ] Vite + React 18 + TS strict
+- [ ] Vite + React 19 + TS strict
 - [ ] Tailwind v3 mapped to CSS custom properties
 - [ ] `tokens.css` with every DRD §2 token on `:root`
 - [ ] Inter font from Google Fonts
@@ -1002,12 +1002,31 @@ Landed as one combined Part E commit (user preference confirmed at planning time
 - `uv run pytest -q` (against docker-compose.test Postgres on port 5433) — **236 passed in 21s**, 0 failures, 0 skips.
 - `uv run pytest -q --cov=taskflow.services --cov=taskflow.auth --cov-fail-under=70` — passes; coverage report = 71.06%.
 - `make seed` not yet run end-to-end; covered by `tests/integration/test_seed.py` (idempotency + shape + notification generation) and pending operator verification on next `make dev`.
-- mypy still hits the pre-existing `sqlalchemy/sql/schema.py:4734` INTERNAL ERROR under mypy 1.20.2 — unchanged from D2, still tracked as out-of-scope.
+- mypy still hits the pre-existing `sqlalchemy/sql/schema.py:4734` INTERNAL ERROR under mypy 1.20.2 — unchanged from D2, still tracked as out-of-scope. **[Superseded 2026-05-30: mypy now runs clean and the typecheck CI job passes — see 2026-05-30 Notes.]**
 
 **Known follow-ups (post-E):**
 - Raise coverage gate from 70% → 85% before launch (E3 ratchet).
 - Manual `make seed` end-to-end pass: sign in as `owner@aurora.test`, confirm dashboard + board + search return varied data, confirm Member accounts show ≥1 unread notification.
-- Resolve the mypy INTERNAL ERROR so the typecheck CI job can be re-enabled.
+- ~~Resolve the mypy INTERNAL ERROR so the typecheck CI job can be re-enabled.~~ **Resolved 2026-05-30 — typecheck job passes; mypy clean (see 2026-05-30 Notes).**
 
 **Dependabot policy reminder:**
-Per the top-of-file policy, F1 is the next phase boundary — that opens the **frontend majors window**. Before starting F1, sweep open Dependabot PRs for React / Vite / `@vitejs/plugin-react` and friends and take them together so the codegen + lock-file churn happens once.
+Per the top-of-file policy, F1 is the next phase boundary — that opens the **frontend majors window**. Before starting F1, sweep open Dependabot PRs for React / Vite / `@vitejs/plugin-react` and friends and take them together so the codegen + lock-file churn happens once. **Done 2026-05-30 — see next entry.**
+
+### 2026-05-30 — Pre-F1 Dependabot majors window + main CI green
+
+Executed the frontend-majors window ahead of Phase F1 and cleared a pre-existing red CI on `main`. No planned phase advanced; this is build-tooling and CI hygiene.
+
+**Frontend toolchain majors (PR #19, squash `8c352a3`):** bundled the four open Dependabot PRs into one rebase per policy. `@biomejs/biome` 1.9.4→2.4.15, `typescript` 5.6.3→6.0.3, `lint-staged` 16.4.0→17.0.5, `turbo` 2.9.14→2.9.16, plus the web patch group (react/react-dom 19.2.6, @types/react 19.2.15, @vitejs/plugin-react 6.0.2, vite 8.0.14). React 19.2 / Vite 8 were already on `main` from an earlier bump.
+- **Biome 2 config migration:** `files.ignore` → `files.includes` with `!`-negation; `organizeImports` → `assist.actions.source.organizeImports`; folder ignores drop trailing `/**`. Applied to `biome.json` and `packages/config/biome.base.json`.
+- **TS 6:** removed deprecated `baseUrl` from `apps/web/tsconfig.json` and made the path alias relative (`"@/*": ["./src/*"]`) to avoid TS5090.
+- Superseded Dependabot PRs **#9, #10, #11, #18** — all closed.
+
+**Pre-existing Python CI failures fixed (PR #20, squash `3716566`):** the Lint and Typecheck CI jobs were red on their Python steps, independent of any frontend work. (Each job runs JS *and* Python steps in sequence, so a Python failure surfaces as a failed "Lint"/"Typecheck" check.) Fixed all 14 mypy errors + 1 ruff-format diff across `services/cleanup.py` (cast `delete()` Result → `CursorResult` for `.rowcount`; collapse implicit string concat), `api/v1/workspaces.py` (coalesce nullable `inviter_name` to `str`), and `scripts/seed.py` (annotate `db: AsyncSession` params + `list[Project]` generics; typed-local for the `_existing_workspace` scalar). Type/format-only, no behaviour change. **`main` CI is now fully green (Lint, Typecheck, Tests, nginx -t).**
+
+**Correction to earlier E-phase notes:** the prior claim (above) that mypy hits a `sqlalchemy/.../schema.py` INTERNAL ERROR and the typecheck CI job is disabled is **no longer accurate** — the Typecheck job ran and passed on PRs #19 and #20, and `uv run mypy taskflow tests` exits 0 with cleared cache under mypy 1.20.2. The "re-enable typecheck CI" follow-up is therefore resolved/obsolete. (A stale local `.mypy_cache` had also inflated the local error count to 47 vs CI's 14 — clear the cache + `uv sync --frozen` to match CI.)
+
+**Repo hygiene (commit `c2f1360`):** added `CLAUDE.md` (doc pointers) and ignored `.claude/` (local Claude Code session state) in `.gitignore`.
+
+**Gotcha for next session:** the `gh` CLI has three accounts; only **PlanningRoom** is a collaborator on this repo. `git` push works via the `git@github-planningroom:` SSH alias regardless of the active `gh` account, so a successful push does NOT imply `gh` is authed correctly — run `gh auth switch -u PlanningRoom` before `gh pr create`.
+
+**Still open (unchanged):** raise coverage gate 70% → 85% before launch (E3 ratchet); manual `make seed` end-to-end pass.
