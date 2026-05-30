@@ -10,10 +10,11 @@ import asyncio
 import gzip
 import time
 from datetime import UTC, datetime
+from typing import Any, cast
 
 import aioboto3
 import structlog
-from sqlalchemy import delete, or_
+from sqlalchemy import CursorResult, delete, or_
 
 from taskflow.db.models.invitation import Invitation
 from taskflow.db.models.password_reset_token import PasswordResetToken
@@ -35,7 +36,7 @@ async def expire_invitations() -> int:
             )
         )
         await db.commit()
-    count = result.rowcount or 0
+    count = cast("CursorResult[Any]", result).rowcount or 0
     logger.info("cleanup.invitations.purged", count=count)
     return count
 
@@ -46,7 +47,7 @@ async def delete_expired_sessions() -> int:
     async with session_scope() as db:
         result = await db.execute(delete(Session).where(Session.expires_at <= now))
         await db.commit()
-    count = result.rowcount or 0
+    count = cast("CursorResult[Any]", result).rowcount or 0
     logger.info("cleanup.sessions.purged", count=count)
     return count
 
@@ -64,7 +65,7 @@ async def delete_expired_password_reset_tokens() -> int:
             )
         )
         await db.commit()
-    count = result.rowcount or 0
+    count = cast("CursorResult[Any]", result).rowcount or 0
     logger.info("cleanup.password_reset_tokens.purged", count=count)
     return count
 
@@ -83,7 +84,7 @@ async def backup_database_to_s3() -> None:
 
     libpq_url = settings.database_url.replace("postgresql+asyncpg://", "postgresql://", 1)
     now = datetime.now(UTC)
-    key = f"backups/{now:%Y}/{now:%m}/{now:%d}/" f"taskflow-{now:%Y%m%dT%H%M%SZ}.sql.gz"
+    key = f"backups/{now:%Y}/{now:%m}/{now:%d}/taskflow-{now:%Y%m%dT%H%M%SZ}.sql.gz"
 
     started = time.perf_counter()
     try:
