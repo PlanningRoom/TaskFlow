@@ -21,10 +21,12 @@ from uuid import UUID
 
 import structlog
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from taskflow.auth.passwords import hash_password
 from taskflow.constants import LABEL_COLORS, TASK_PRIORITIES, TASK_STATUSES
 from taskflow.db.models.label import Label
+from taskflow.db.models.project import Project
 from taskflow.db.models.user import User
 from taskflow.db.models.workspace import Workspace
 from taskflow.db.session import session_scope
@@ -412,11 +414,14 @@ COMMENTS = [
 ]
 
 
-async def _existing_workspace(db) -> Workspace | None:
-    return await db.scalar(select(Workspace).where(Workspace.name == WORKSPACE_NAME))
+async def _existing_workspace(db: AsyncSession) -> Workspace | None:
+    workspace: Workspace | None = await db.scalar(
+        select(Workspace).where(Workspace.name == WORKSPACE_NAME)
+    )
+    return workspace
 
 
-async def _seed_users(db, workspace_id: UUID) -> dict[str, User]:
+async def _seed_users(db: AsyncSession, workspace_id: UUID) -> dict[str, User]:
     users: dict[str, User] = {}
     for email, name, role in USERS:
         user = User(
@@ -432,7 +437,7 @@ async def _seed_users(db, workspace_id: UUID) -> dict[str, User]:
     return users
 
 
-async def _seed_labels(db, workspace_id: UUID, owner: User) -> dict[str, Label]:
+async def _seed_labels(db: AsyncSession, workspace_id: UUID, owner: User) -> dict[str, Label]:
     labels: dict[str, Label] = {}
     for color in LABEL_COLORS:
         label = await label_service.create_label(
@@ -446,8 +451,10 @@ async def _seed_labels(db, workspace_id: UUID, owner: User) -> dict[str, Label]:
     return labels
 
 
-async def _seed_projects_and_access(db, owner: User, users_by_email: dict[str, User]) -> list:
-    projects = []
+async def _seed_projects_and_access(
+    db: AsyncSession, owner: User, users_by_email: dict[str, User]
+) -> list[Project]:
+    projects: list[Project] = []
     for name, color, access_emails in PROJECTS:
         project = await project_service.create_project(
             db,
@@ -466,11 +473,11 @@ async def _seed_projects_and_access(db, owner: User, users_by_email: dict[str, U
 
 
 async def _seed_tasks(
-    db,
+    db: AsyncSession,
     owner: User,
     users_by_email: dict[str, User],
     labels_by_color: dict[str, Label],
-    projects: list,
+    projects: list[Project],
 ) -> dict[str, UUID]:
     """Returns title → task_id."""
     due_buckets = _due_buckets()
@@ -512,7 +519,7 @@ async def _seed_tasks(
 
 
 async def _seed_comments(
-    db,
+    db: AsyncSession,
     users_by_email: dict[str, User],
     task_ids_by_title: dict[str, UUID],
 ) -> None:

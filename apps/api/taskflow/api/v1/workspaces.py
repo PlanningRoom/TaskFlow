@@ -214,7 +214,7 @@ async def send_invitation(
         send_invitation_email,
         to=body.email,
         workspace_name=workspace.name,
-        inviter_name=user.name,
+        inviter_name=user.name or "",
         raw_token=raw_token,
     )
     return SendInvitationResponse(invitation=_invitation_dto(invitation, user))
@@ -246,7 +246,7 @@ async def resend_invitation(
         send_invitation_email,
         to=invitation.email,
         workspace_name=workspace.name,
-        inviter_name=(inviter.name if inviter is not None else user.name),
+        inviter_name=(inviter.name if inviter is not None else user.name) or "",
         raw_token=raw_token,
     )
     return ResendInvitationResponse(invitation=_invitation_dto(invitation, inviter))
