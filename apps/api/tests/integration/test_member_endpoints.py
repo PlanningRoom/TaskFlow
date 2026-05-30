@@ -194,3 +194,44 @@ async def test_remove_unknown_member_404(http: AsyncClient, db_session: AsyncSes
     )
     assert response.status_code == 404
     assert response.json()["error"]["code"] == "MEMBER_NOT_FOUND"
+
+
+async def test_remove_member_is_idempotent(http: AsyncClient, db_session: AsyncSession) -> None:
+    await signup_owner(http)
+    owner = await db_session.scalar(select(User).where(User.role == "owner"))
+    assert owner is not None
+    target = await make_user(db_session, workspace_id=owner.workspace_id, role="member")
+    headers = csrf_headers(http)
+
+    first = await http.delete(f"/api/v1/workspaces/me/members/{target.id}", headers=headers)
+    assert first.status_code == 200, first.text
+    # Removing an already-anonymized member is a no-op (no second audit row).
+    second = await http.delete(f"/api/v1/workspaces/me/members/{target.id}", headers=headers)
+    assert second.status_code == 200, second.text
+
+    audit_rows = (
+        await db_session.execute(
+            select(AuditLog).where(AuditLog.event_type == "workspace.user.removed")
+        )
+    ).all()
+    assert len(audit_rows) == 1
+
+
+async def test_change_role_on_removed_member_404(
+    http: AsyncClient, db_session: AsyncSession
+) -> None:
+    await signup_owner(http)
+    owner = await db_session.scalar(select(User).where(User.role == "owner"))
+    assert owner is not None
+    target = await make_user(db_session, workspace_id=owner.workspace_id, role="member")
+    headers = csrf_headers(http)
+
+    await http.delete(f"/api/v1/workspaces/me/members/{target.id}", headers=headers)
+    # The anonymized user is no longer a role-change target.
+    response = await http.patch(
+        f"/api/v1/workspaces/me/members/{target.id}",
+        json={"role": "admin"},
+        headers=headers,
+    )
+    assert response.status_code == 404
+    assert response.json()["error"]["code"] == "MEMBER_NOT_FOUND"

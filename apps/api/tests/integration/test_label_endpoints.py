@@ -145,6 +145,26 @@ async def test_update_label(http: AsyncClient, db_session: AsyncSession) -> None
     assert audit is not None
 
 
+async def test_update_label_to_existing_name_conflicts(http: AsyncClient) -> None:
+    await signup_owner(http)
+    headers = csrf_headers(http)
+    await http.post("/api/v1/labels", json={"name": "bug", "color": "red"}, headers=headers)
+    feature = (
+        await http.post(
+            "/api/v1/labels", json={"name": "feature", "color": "blue"}, headers=headers
+        )
+    ).json()
+
+    # Renaming "feature" onto the existing "bug" name is rejected.
+    response = await http.patch(
+        f"/api/v1/labels/{feature['id']}",
+        json={"name": "bug"},
+        headers=headers,
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "LABEL_NAME_TAKEN"
+
+
 async def test_delete_label_cascades_audit(http: AsyncClient, db_session: AsyncSession) -> None:
     await signup_owner(http)
     headers = csrf_headers(http)

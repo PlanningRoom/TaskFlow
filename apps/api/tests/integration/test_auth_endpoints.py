@@ -400,6 +400,161 @@ async def test_accept_invitation_rejects_invalid_token(http: AsyncClient) -> Non
     assert response.json()["error"]["code"] == "INVALID_TOKEN"
 
 
+async def test_accept_invitation_new_user_requires_account_fields(
+    http: AsyncClient, db_session: AsyncSession
+) -> None:
+    await http.post("/api/v1/auth/signup", json=SIGNUP_PAYLOAD)
+    owner = await db_session.scalar(select(User).where(User.email.ilike(SIGNUP_PAYLOAD["email"])))
+    assert owner is not None
+
+    raw = secrets.token_urlsafe(32)
+    db_session.add(
+        Invitation(
+            workspace_id=owner.workspace_id,
+            email="fields-required@example.com",
+            role="member",
+            token_hash=hash_token(raw),
+            invited_by=owner.id,
+            expires_at=datetime.now(UTC) + timedelta(days=7),
+        )
+    )
+    await db_session.commit()
+
+    # New email but no password/display_name → service rejects.
+    response = await http.post("/api/v1/auth/accept-invitation", json={"token": raw})
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "ACCOUNT_FIELDS_REQUIRED"
+
+
+async def test_accept_invitation_existing_user_moves_workspace(
+    app: FastAPI, http: AsyncClient, db_session: AsyncSession
+) -> None:
+    # Owner A's workspace (the inviter).
+    await http.post("/api/v1/auth/signup", json=SIGNUP_PAYLOAD)
+    owner = await db_session.scalar(select(User).where(User.email.ilike(SIGNUP_PAYLOAD["email"])))
+    assert owner is not None
+
+    # A pre-existing live user (currently owner of their own workspace B).
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://testserver") as other:
+        await other.post(
+            "/api/v1/auth/signup",
+            json={
+                "email": "existing@example.com",
+                "password": "correct-horse-battery-staple-2",
+                "display_name": "Existing User",
+                "workspace_name": "Workspace B",
+            },
+        )
+    existing = await db_session.scalar(select(User).where(User.email.ilike("existing@example.com")))
+    assert existing is not None
+    original_ws = existing.workspace_id
+
+    # Owner A invites that existing email.
+    raw = secrets.token_urlsafe(32)
+    db_session.add(
+        Invitation(
+            workspace_id=owner.workspace_id,
+            email="existing@example.com",
+            role="member",
+            token_hash=hash_token(raw),
+            invited_by=owner.id,
+            expires_at=datetime.now(UTC) + timedelta(days=7),
+        )
+    )
+    await db_session.commit()
+
+    # Accept — no password/display_name needed for an existing account.
+    response = await http.post("/api/v1/auth/accept-invitation", json={"token": raw})
+    assert response.status_code == 200, response.text
+    assert response.json()["user"]["email"] == "existing@example.com"
+
+    moved = await db_session.get(User, existing.id, populate_existing=True)
+    assert moved is not None
+    assert moved.workspace_id == owner.workspace_id != original_ws
+    assert moved.role == "member"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Authenticated mutations — wrong-credential branches
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+async def test_change_password_wrong_current_returns_401(http: AsyncClient) -> None:
+    await http.post("/api/v1/auth/signup", json=SIGNUP_PAYLOAD)
+    response = await http.post(
+        "/api/v1/auth/change-password",
+        json={"current_password": "not-the-password", "new_password": "another-correct-horse"},
+        headers=_csrf_headers(http),
+    )
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
+
+
+async def test_delete_account_wrong_password_returns_401(http: AsyncClient) -> None:
+    await http.post("/api/v1/auth/signup", json=SIGNUP_PAYLOAD)
+    response = await http.request(
+        "DELETE",
+        "/api/v1/auth/me",
+        json={"password": "not-the-password"},
+        headers=_csrf_headers(http),
+    )
+    assert response.status_code == 401
+    assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Direct service-layer calls — branches not reachable through the HTTP path
+# (FastAPI always supplies a Request; the endpoints never pass request=None).
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+async def test_login_service_tolerates_no_request(db_session: AsyncSession) -> None:
+    from taskflow.services import auth as auth_service
+
+    await auth_service.signup(
+        db_session,
+        email="norq@example.com",
+        password="correct-horse-battery-staple",
+        display_name="No Request",
+        workspace_name="NoReq WS",
+    )
+    await db_session.commit()
+
+    # request=None exercises the _client_ip / _user_agent None-guards.
+    user, tokens = await auth_service.login(
+        db_session, email="norq@example.com", password="correct-horse-battery-staple"
+    )
+    assert user.email == "norq@example.com"
+    assert tokens.session_token
+
+
+async def test_confirm_password_reset_rejects_deleted_user(db_session: AsyncSession) -> None:
+    from taskflow.services import auth as auth_service
+    from taskflow.services.users import anonymize_user
+
+    user, _ = await auth_service.signup(
+        db_session,
+        email="willdelete@example.com",
+        password="correct-horse-battery-staple",
+        display_name="Will Delete",
+        workspace_name="Delete WS",
+    )
+    await db_session.commit()
+
+    _, raw = await auth_service.request_password_reset(db_session, email="willdelete@example.com")
+    await db_session.commit()
+    assert raw is not None
+
+    # User is anonymized after the token was issued → confirm must reject.
+    await anonymize_user(db_session, user)
+    await db_session.commit()
+
+    with pytest.raises(auth_service.InvalidTokenError):
+        await auth_service.confirm_password_reset(
+            db_session, raw_token=raw, new_password="brand-new-correct-horse"
+        )
+
+
 # ──────────────────────────────────────────────────────────────────────────────
 # UUIDv7 sanity
 # ──────────────────────────────────────────────────────────────────────────────

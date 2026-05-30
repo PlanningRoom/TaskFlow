@@ -89,6 +89,13 @@ module = [
 ]
 ignore_missing_imports = true
 
+[tool.coverage.run]
+# The integration suite drives endpoints through httpx's ASGI transport, whose
+# request handling runs under SQLAlchemy's greenlet bridge / worker threads.
+# Without declaring those concurrency modes, coverage only traces the main
+# context and silently undercounts every line reached via the HTTP path.
+concurrency = ["thread", "greenlet"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]

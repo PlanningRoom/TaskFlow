@@ -128,3 +128,70 @@ async def test_cross_workspace_project_scope_404(
         )
         r = await b_http.get(f"/api/v1/activity?project_id={project_id}")
         assert r.status_code == 404
+
+
+async def test_owner_project_scoped_feed(http: AsyncClient) -> None:
+    project_id, _ = await _bootstrap(http)
+    # Owner has implicit visibility; project scope filters to that project.
+    r = await http.get(f"/api/v1/activity?project_id={project_id}")
+    assert r.status_code == 200
+    types = {e["event_type"] for e in r.json()["events"]}
+    assert "task.created" in types
+
+
+async def test_activity_feed_cursor_pagination(http: AsyncClient) -> None:
+    project_id, _ = await _bootstrap(http)
+    headers = csrf_headers(http)
+    # Generate several activity rows (each status change emits one).
+    for status in ("in_progress", "in_review", "done"):
+        task = (
+            await http.post(
+                f"/api/v1/projects/{project_id}/tasks",
+                json={"title": f"task-{status}"},
+                headers=headers,
+            )
+        ).json()
+        await http.patch(
+            f"/api/v1/tasks/{task['id']}/status",
+            json={"status": status},
+            headers=headers,
+        )
+
+    first = await http.get("/api/v1/activity?limit=2")
+    body = first.json()
+    assert len(body["events"]) == 2
+    assert body["next_cursor"]
+
+    second = await http.get(f"/api/v1/activity?limit=2&cursor={body['next_cursor']}")
+    assert second.status_code == 200
+    assert len(second.json()["events"]) >= 1
+
+
+async def test_activity_feed_ignores_malformed_cursor(http: AsyncClient) -> None:
+    await _bootstrap(http)
+    # A malformed cursor decodes to None and is silently ignored (no 500).
+    r = await http.get("/api/v1/activity?cursor=!!!not-base64!!!")
+    assert r.status_code == 200
+    assert any(e["event_type"] == "task.created" for e in r.json()["events"])
+
+
+async def test_get_event_direct_lookup_and_missing(
+    http: AsyncClient, db_session: AsyncSession
+) -> None:
+    from uuid import uuid4
+
+    from taskflow.db.models.activity_event import ActivityEvent
+    from taskflow.errors import NotFoundError
+    from taskflow.services import activity as activity_service
+
+    await _bootstrap(http)
+    created = await db_session.scalar(
+        select(ActivityEvent).where(ActivityEvent.event_type == "task.created")
+    )
+    assert created is not None
+
+    fetched = await activity_service.get_event(db_session, event_id=created.id)
+    assert fetched.id == created.id
+
+    with pytest.raises(NotFoundError):
+        await activity_service.get_event(db_session, event_id=uuid4())

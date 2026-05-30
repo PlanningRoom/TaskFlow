@@ -258,7 +258,7 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 - [x] LISTEN/NOTIFY round-trip integration test (`test_broadcaster_round_trip.py`)
 - [x] FTS integration test (`test_search_fts.py` — operator handling + malformed input + stemming + length-bombed query)
 - [x] Workspace isolation sweep
-- [~] Coverage report: ≥85% on `services/` and `auth/` — gate landed at **70%** (ratchet floor, current is 71.06%). 85% needs ~14 additional percentage points of service-layer branch tests; tracked as a follow-up before launch but not blocking F-track frontend work.
+- [x] Coverage report: ≥85% on `services/` and `auth/` — **gate raised to 85%; actual is ~98%** (resolved 2026-05-30, see note below). The 71% reading was a measurement artifact (coverage wasn't tracing the ASGI request path); fixing `[tool.coverage.run] concurrency` revealed true coverage of ~90%, and a targeted test pass closed the genuine remaining branches.
 - [x] CI run time ≤10 minutes (full suite 22s locally + ~10s for `pytest-cov` overhead; well under budget)
 
 #### Phase E4 — Seed Data `[x] Complete`
@@ -1029,4 +1029,14 @@ Executed the frontend-majors window ahead of Phase F1 and cleared a pre-existing
 
 **Gotcha for next session:** the `gh` CLI has three accounts; only **PlanningRoom** is a collaborator on this repo. `git` push works via the `git@github-planningroom:` SSH alias regardless of the active `gh` account, so a successful push does NOT imply `gh` is authed correctly — run `gh auth switch -u PlanningRoom` before `gh pr create`.
 
-**Still open (unchanged):** raise coverage gate 70% → 85% before launch (E3 ratchet); manual `make seed` end-to-end pass.
+**Still open (unchanged):** manual `make seed` end-to-end pass. (The coverage-gate follow-up is resolved — see 2026-05-30 coverage note below.)
+
+### 2026-05-30 — Coverage gate raised 70% → 85% (E3 follow-up closed)
+
+Closed the long-standing E3 coverage follow-up. The headline finding: **the 71% reading was a measurement artifact, not a test gap.**
+
+- **Root cause:** the integration suite drives endpoints through httpx's `ASGITransport`, whose request handling runs under SQLAlchemy's greenlet bridge / worker threads. coverage.py only traces the main execution context by default, so every line reached *via an HTTP endpoint test* was silently uncounted — only direct service calls and unit tests registered. Diagnosed by observing that all 18 auth endpoint tests passed while `services/auth.py` showed its function bodies uncovered (only `def` lines, i.e. import-time, were counted), and confirmed by adding a single direct `auth_service.signup(...)` call which moved the file 48% → 58%.
+- **Fix (the real win):** added `[tool.coverage.run] concurrency = ["thread", "greenlet"]` to `apps/api/pyproject.toml`. With no new tests this took the combined number **71% → 90%** — the existing endpoint tests now count. This config is required in CI too (coverage reads `pyproject`).
+- **Targeted tests (+27, 236 → 263 passing):** closed the genuinely-untested branches the fix revealed — the `pg_dump`/S3 `backup_database_to_s3` job, task list `due=`/`sort=`/cursor-pagination branches and the assign-to-other-member path, auth wrong-password / accept-invitation existing-user + missing-fields / deleted-user-reset branches, member idempotent-remove + role-change-on-removed, label rename-conflict, invitation `derive_status` accepted/expired, activity project-scope + cursor pagination + `get_event`, and notification self-mention suppression + list pagination + mark-read success. Final combined coverage **~98%**.
+- **Gate:** `ci.yml` `--cov-fail-under` 70 → **85** (the original E3 spec floor; ~13 pts of headroom over actual). Branch coverage (`--cov-branch`) remains off — a separate, larger decision.
+- **Left uncovered by design (~22 lines):** defensive guards and dead code — `require_role` (no endpoint uses it; the codebase gates on `require_action`), the `dispatch_for_comment` dedup line (unreachable because `resolve_mentions` already de-dupes by id), `current_workspace`'s FK-guaranteed assert, and assorted single-line None-guards. Not worth contrived tests; candidates for `# pragma: no cover` if the number ever needs defending.

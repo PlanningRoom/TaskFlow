@@ -160,3 +160,98 @@ async def test_backup_skipped_when_bucket_unset(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(settings, "s3_backups_bucket", None)
     # No exception, no error.
     await cleanup.backup_database_to_s3()
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Backup job: pg_dump + S3 upload paths (ADR 074). pg_dump and aioboto3 are
+# mocked — these tests exercise the job's control flow, not real shell-out/S3.
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+class _FakeProc:
+    def __init__(self, returncode: int, stdout: bytes = b"", stderr: bytes = b"") -> None:
+        self.returncode = returncode
+        self._stdout = stdout
+        self._stderr = stderr
+
+    async def communicate(self) -> tuple[bytes, bytes]:
+        return self._stdout, self._stderr
+
+
+class _FakeS3Client:
+    def __init__(self, raise_on_put: bool = False) -> None:
+        self._raise = raise_on_put
+        self.put_calls: list[dict[str, object]] = []
+
+    async def __aenter__(self) -> _FakeS3Client:
+        return self
+
+    async def __aexit__(self, *exc: object) -> None:
+        return None
+
+    async def put_object(self, **kwargs: object) -> None:
+        if self._raise:
+            raise RuntimeError("s3 unavailable")
+        self.put_calls.append(kwargs)
+
+
+class _FakeSession:
+    def __init__(self, client: _FakeS3Client) -> None:
+        self._client = client
+
+    def client(self, *args: object, **kwargs: object) -> _FakeS3Client:
+        return self._client
+
+
+def _patch_pg_dump(monkeypatch: pytest.MonkeyPatch, proc: _FakeProc) -> None:
+    async def _fake_exec(*args: object, **kwargs: object) -> _FakeProc:
+        return proc
+
+    # String target keeps mypy from type-checking attribute access on the
+    # re-exported `asyncio` / `aioboto3` names in the cleanup module.
+    monkeypatch.setattr("taskflow.services.cleanup.asyncio.create_subprocess_exec", _fake_exec)
+
+
+async def test_backup_aborts_when_pg_dump_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    from taskflow.settings import settings
+
+    monkeypatch.setattr(settings, "s3_backups_bucket", "backups-bucket")
+    _patch_pg_dump(monkeypatch, _FakeProc(returncode=1, stderr=b"connection refused"))
+
+    s3 = _FakeS3Client()
+    monkeypatch.setattr("taskflow.services.cleanup.aioboto3.Session", lambda: _FakeSession(s3))
+
+    # pg_dump failed → returns early, never touches S3.
+    await cleanup.backup_database_to_s3()
+    assert s3.put_calls == []
+
+
+async def test_backup_uploads_gzipped_dump_to_s3(monkeypatch: pytest.MonkeyPatch) -> None:
+    from taskflow.settings import settings
+
+    monkeypatch.setattr(settings, "s3_backups_bucket", "backups-bucket")
+    _patch_pg_dump(monkeypatch, _FakeProc(returncode=0, stdout=b"-- pg_dump output"))
+
+    s3 = _FakeS3Client()
+    monkeypatch.setattr("taskflow.services.cleanup.aioboto3.Session", lambda: _FakeSession(s3))
+
+    await cleanup.backup_database_to_s3()
+
+    assert len(s3.put_calls) == 1
+    call = s3.put_calls[0]
+    assert call["Bucket"] == "backups-bucket"
+    assert str(call["Key"]).startswith("backups/")
+    assert isinstance(call["Body"], bytes) and call["Body"][:2] == b"\x1f\x8b"  # gzip magic
+
+
+async def test_backup_swallows_s3_upload_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    from taskflow.settings import settings
+
+    monkeypatch.setattr(settings, "s3_backups_bucket", "backups-bucket")
+    _patch_pg_dump(monkeypatch, _FakeProc(returncode=0, stdout=b"-- pg_dump output"))
+
+    s3 = _FakeS3Client(raise_on_put=True)
+    monkeypatch.setattr("taskflow.services.cleanup.aioboto3.Session", lambda: _FakeSession(s3))
+
+    # Upload raises → caught and logged, no exception propagates.
+    await cleanup.backup_database_to_s3()

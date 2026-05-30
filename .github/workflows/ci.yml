@@ -131,15 +131,19 @@ jobs:
 
       - name: pytest
         working-directory: apps/api
-        # Coverage gate is a ratchet — current floor is ~71% on services + auth
-        # combined. The Phase E3 spec asked for 85%; raising the bar there is
-        # tracked in `docs/planning/implementation-status.md` E3 notes.
+        # Coverage gate at the Phase E3 spec floor of 85% on services + auth
+        # combined. Actual coverage is ~98% (see implementation-status.md E3
+        # note, 2026-05-30). NB: `[tool.coverage.run] concurrency` in
+        # pyproject.toml is required for accurate measurement — the integration
+        # suite drives endpoints through httpx's ASGI transport, which runs
+        # under threads/greenlet; without it coverage silently undercounts
+        # every line reached via the HTTP path.
         run: |
           uv run pytest -q \
             --cov=taskflow.services \
             --cov=taskflow.auth \
             --cov-report=term-missing \
-            --cov-fail-under=70
+            --cov-fail-under=85
 
   nginx-config:
     name: nginx -t

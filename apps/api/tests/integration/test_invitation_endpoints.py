@@ -205,3 +205,46 @@ async def test_list_invitations(http: AsyncClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert len(body["invitations"]) == 2
+
+
+async def test_list_invitations_reports_accepted_and_expired_status(
+    http: AsyncClient, db_session: AsyncSession
+) -> None:
+    import secrets
+    from datetime import UTC, datetime, timedelta
+
+    from taskflow.auth.tokens import hash_token
+
+    await signup_owner(http)
+    owner = await db_session.scalar(select(User).where(User.role == "owner"))
+    assert owner is not None
+    now = datetime.now(UTC)
+
+    db_session.add(
+        Invitation(
+            workspace_id=owner.workspace_id,
+            email="accepted@example.com",
+            role="member",
+            token_hash=hash_token(secrets.token_urlsafe(32)),
+            invited_by=owner.id,
+            expires_at=now + timedelta(days=7),
+            accepted_at=now - timedelta(hours=1),
+        )
+    )
+    db_session.add(
+        Invitation(
+            workspace_id=owner.workspace_id,
+            email="expired@example.com",
+            role="member",
+            token_hash=hash_token(secrets.token_urlsafe(32)),
+            invited_by=owner.id,
+            expires_at=now - timedelta(days=1),
+        )
+    )
+    await db_session.commit()
+
+    response = await http.get("/api/v1/workspaces/me/invitations")
+    assert response.status_code == 200
+    statuses = {i["email"]: i["status"] for i in response.json()["invitations"]}
+    assert statuses["accepted@example.com"] == "accepted"
+    assert statuses["expired@example.com"] == "expired"
