@@ -4,6 +4,8 @@
  * `@taskflow/api-types` package directly. Add aliases here as screens need them.
  */
 export type {
+  AcceptInvitationRequest,
+  AcceptInvitationResponse,
   ActivityEvent,
   ApiErrorEnvelope,
   Comment,
@@ -11,10 +13,17 @@ export type {
   DashboardProject,
   Invitation,
   Label,
+  LoginRequest,
+  LoginResponse,
   Member,
   Notification,
+  OkResponse,
+  PasswordResetConfirm,
+  PasswordResetRequest,
   Project,
   SearchResult,
+  SignupRequest,
+  SignupResponse,
   TaskDetail,
   TaskSummary,
   UserSummary,

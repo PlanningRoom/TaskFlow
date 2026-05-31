@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
 **Last Updated:** 2026-05-31
-**Current Phase:** Phase G1 — Auth Screens (next; Part F Frontend Foundation complete — see Notes 2026-05-31 F2–F4)
+**Current Phase:** Phase G2 — Dashboard (next; Phase G1 Auth Screens complete — see Notes 2026-05-31 G1)
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -53,10 +53,10 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | D | Backend Real-Time & Async | 2 | 2 | 0 | 0 |
 | E | Backend Hardening | 4 | 4 | 0 | 0 |
 | F | Frontend Foundation | 4 | 4 | 0 | 0 |
-| G | Frontend Screens | 8 | 0 | 0 | 0 |
+| G | Frontend Screens | 8 | 1 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 0 | 0 | 0 |
 | I | E2E, Infra, Deploy | 6 | 0 | 0 | 0 |
-| **Total** | | **42** | **23** | **0** | **0** |
+| **Total** | | **42** | **24** | **0** | **0** |
 
 ---
 
@@ -323,14 +323,14 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 
 ### Part G — Frontend Screens
 
-#### Phase G1 — Auth Screens `[ ] Not started`
-- [ ] Login screen (DRD §8.1)
-- [ ] Signup screen (PRD §3.1)
-- [ ] Accept-invitation screen (new + existing user paths, expired state)
-- [ ] Password-reset request + confirm screens
-- [ ] Form schemas via Zod
-- [ ] Mutation hooks hydrate user cache + navigate
-- [ ] Component + axe tests
+#### Phase G1 — Auth Screens `[x] Complete`
+- [x] Login screen (DRD §8.1)
+- [x] Signup screen (PRD §3.1)
+- [x] Accept-invitation screen — **blind accept form** (see G1 note: no backend invitation-preview endpoint, so workspace/role/inviter preview, email prefill, and new-vs-existing branching are deferred); expired/invalid token states implemented
+- [x] Password-reset request + confirm screens (confirm at `/reset-password?token=…` per the reset email)
+- [x] Form schemas via Zod (`apps/web/src/forms/schemas/index.ts`)
+- [x] Mutation hooks hydrate user cache + navigate (`useAuthSuccess`); shell route guard redirects unauthenticated users to `/login`
+- [x] Component + axe tests (24 new tests; full web suite 50 green)
 
 #### Phase G2 — Dashboard `[ ] Not started`
 - [ ] Two-column 60/40 grid
@@ -523,6 +523,24 @@ These were surfaced during plan validation (§6.4 of the implementation plan). R
 ## Notes
 
 Use this section as a running log of decisions, blockers, or context that should persist across sessions.
+
+### 2026-05-31 — Phase G1 complete (Auth Screens)
+
+The full unauthenticated journey now renders real, backend-wired screens (replacing the F4 `AuthPlaceholder` stubs). First clickable UI of Part G.
+
+**Built** under `apps/web/src/features/auth/`:
+- Screens: `LoginScreen`, `SignupScreen`, `AcceptInvitationScreen`, `PasswordResetRequestScreen`, `PasswordResetConfirmScreen`.
+- Shared scaffolding: `AuthCard` (centered login-bg card, extracted from the old `AuthPlaceholder` styling), `FormField`/`FormError` (label + input + inline error wired to `aria-invalid`/`aria-describedby`), `useAuthSuccess` (seeds `CURRENT_USER_KEY` from the `{user}` response, then `navigate('/dashboard', replace)`).
+- Schemas added to `forms/schemas/index.ts` (`loginSchema` uses `password.min(1)` — NOT the 8-char rule — so a wrong password returns 401 not a client 422, mirroring the backend's deliberately-unconstrained `LoginRequest.password`). Auth DTO aliases added to `packages/api-types/src/index.ts` + re-exported from `apps/web/src/api/types.ts`.
+- Copy in `i18n/locales/en.json` under `auth.*` (DRD §8.1–§8.2 + tone guide).
+
+**Router** (`src/app/router.tsx`): swapped the three auth placeholders for the real screens; added `/forgot-password` (reset request) and `/reset-password` (reset confirm — token read from the **query string**, per the reset email link `…/reset-password?token=…`). The invitation link path stayed `/invitations/$token`. **Auth guards landed (the F4 TODO):** `shellRoute.beforeLoad` resolves `/auth/me` via `queryClient.ensureQueryData` and redirects to `/login` on 401; `loginRoute`/`signupRoute` redirect to `/dashboard` when already authenticated. `AuthPlaceholder.tsx` removed.
+
+**Scope decision (confirmed with user) — blind accept-invitation form.** The backend has no GET-invitation-by-token endpoint; `POST /accept-invitation` reveals nothing pre-acceptance. So the screen collects display name + password and submits the token, letting the backend resolve existing-vs-new internally. It does NOT show workspace name / role / inviter, does NOT prefill the email, and does NOT branch new-vs-existing — a divergence from DRD §8.2. Expired/invalid tokens render a calm full-card state with a way back.
+- **Follow-up (pre-launch / Part G polish):** add a backend `GET /auth/invitations/:token` preview endpoint (workspace name, role, inviter, email, status), regenerate OpenAPI types, then enrich the accept screen per DRD §8.2.
+- Also still deferred from earlier phases and surfaced by these screens: a logout affordance (header dropdown, G8) and the global toast store (H3); auth errors currently render inline, not as toasts.
+
+**Verification (all green):** `pnpm --filter @taskflow/web typecheck` clean; `test` 50/50 (24 new auth tests, axe-clean per screen); `lint` clean (Biome); `vite build` succeeds. Live end-to-end against the dev stack (signup→dashboard, login, reset via MailHog, invitation accept) is the remaining manual check — same cumulative "runtime verification" caveat as prior frontend phases.
 
 ### 2026-05-31 — Phases F2–F4 complete (Part F: Frontend Foundation done)
 

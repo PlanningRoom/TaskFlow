@@ -16,7 +16,9 @@ repos:
     hooks:
       - id: detect-secrets
         args: ["--baseline", ".secrets.baseline"]
-        exclude: ^(\.secrets\.baseline|pnpm-lock\.yaml|package-lock\.json)$
+        # i18n locale files are pure UI copy (e.g. the word "Password" as a field
+        # label) and trip the keyword detector with no real secrets; exclude them.
+        exclude: ^(\.secrets\.baseline|pnpm-lock\.yaml|package-lock\.json|apps/web/src/i18n/locales/[^/]+\.json)$
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0

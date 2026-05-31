@@ -15,16 +15,25 @@ export type { components, operations, paths };
 export type Schemas = components['schemas'];
 
 // --- Convenience aliases (alphabetical) -----------------------------------
+export type AcceptInvitationRequest = Schemas['AcceptInvitationRequest'];
+export type AcceptInvitationResponse = Schemas['AcceptInvitationResponse'];
 export type ActivityEvent = Schemas['ActivityEventDTO'];
 export type Comment = Schemas['CommentDTO'];
 export type CurrentUser = Schemas['CurrentUser'];
 export type DashboardProject = Schemas['DashboardProjectDTO'];
 export type Invitation = Schemas['InvitationDTO'];
 export type Label = Schemas['LabelDTO'];
+export type LoginRequest = Schemas['LoginRequest'];
+export type LoginResponse = Schemas['LoginResponse'];
 export type Member = Schemas['MemberDTO'];
 export type Notification = Schemas['NotificationDTO'];
+export type OkResponse = Schemas['OkResponse'];
+export type PasswordResetConfirm = Schemas['PasswordResetConfirm'];
+export type PasswordResetRequest = Schemas['PasswordResetRequest'];
 export type Project = Schemas['ProjectDTO'];
 export type SearchResult = Schemas['SearchResult'];
+export type SignupRequest = Schemas['SignupRequest'];
+export type SignupResponse = Schemas['SignupResponse'];
 export type TaskDetail = Schemas['TaskDetail'];
 export type TaskSummary = Schemas['TaskSummary'];
 export type UserSummary = Schemas['UserSummary'];
