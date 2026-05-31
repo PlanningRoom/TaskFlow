@@ -12,7 +12,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   // Reset cookies between tests.
   // biome-ignore lint/suspicious/noDocumentCookie: test fixture sets the CSRF cookie directly
-  document.cookie = 'csrf_token=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  document.cookie = 'taskflow_csrf=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 });
 
 describe('apiFetch', () => {
@@ -62,7 +62,7 @@ describe('apiFetch', () => {
 
   it('attaches the CSRF header from the cookie on unsafe methods', async () => {
     // biome-ignore lint/suspicious/noDocumentCookie: test fixture sets the CSRF cookie directly
-    document.cookie = 'csrf_token=tok-123';
+    document.cookie = 'taskflow_csrf=tok-123';
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(mockResponse({ ok: true }, { status: 200 }));
@@ -76,7 +76,7 @@ describe('apiFetch', () => {
 
   it('does not attach the CSRF header on GET', async () => {
     // biome-ignore lint/suspicious/noDocumentCookie: test fixture sets the CSRF cookie directly
-    document.cookie = 'csrf_token=tok-123';
+    document.cookie = 'taskflow_csrf=tok-123';
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(mockResponse({ ok: true }, { status: 200 }));

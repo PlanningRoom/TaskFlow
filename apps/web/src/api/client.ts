@@ -6,7 +6,7 @@ import type { ApiErrorEnvelope } from '@taskflow/api-types';
  * - Session auth rides on the `taskflow_session` cookie; every request sends
  *   credentials so the browser attaches it.
  * - State-changing methods carry the CSRF double-submit header: the value is
- *   read from the JS-readable `csrf_token` cookie and echoed as `X-CSRF-Token`.
+ *   read from the JS-readable `taskflow_csrf` cookie and echoed as `X-CSRF-Token`.
  * - Non-2xx responses are parsed into a typed `ApiError` and thrown.
  *
  * The base path is relative (`/api/v1`); nginx proxies it in production and the
@@ -14,7 +14,7 @@ import type { ApiErrorEnvelope } from '@taskflow/api-types';
  */
 
 const API_BASE = '/api/v1';
-const CSRF_COOKIE = 'csrf_token';
+const CSRF_COOKIE = 'taskflow_csrf';
 const CSRF_HEADER = 'X-CSRF-Token';
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 

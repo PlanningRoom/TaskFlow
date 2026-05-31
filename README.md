@@ -80,11 +80,11 @@ Pre-commit hooks (`pre-commit install`) run Biome, Ruff, and a secret scan on st
 
 | Email | Display name | Role |
 |-------|--------------|------|
-| `owner@aurora.test` | Aurora Owens | Owner |
-| `admin@aurora.test` | Adam Min | Admin |
-| `dev1@aurora.test` | Dana Engineer | Member |
-| `dev2@aurora.test` | Mason Code | Member |
-| `viewer@aurora.test` | Vivian Watch | Viewer |
+| `owner@aurora.example.com` | Aurora Owens | Owner |
+| `admin@aurora.example.com` | Adam Min | Admin |
+| `dev1@aurora.example.com` | Dana Engineer | Member |
+| `dev2@aurora.example.com` | Mason Code | Member |
+| `viewer@aurora.example.com` | Vivian Watch | Viewer |
 
 Password for all five: `correct-horse-battery-staple`.
 
@@ -107,6 +107,7 @@ Watch the full series on YouTube to see the methodology in action.
 | 09 | Build Part 2 | [Watch](https://youtu.be/5yICMBDmAh4) |
 | 10 | Build Part 3 | [Watch](https://youtu.be/C-JIIHVX8jA) |
 | 11 | Build Part 4 | [Watch](https://youtu.be/AHbfAfaLs5k) |
+| 12 | Build Part 5 | [Watch](https://youtu.be/WQ8Iz0s4knw) |
 | 12 | *Coming Soon* |  |
 
 ## Learn More

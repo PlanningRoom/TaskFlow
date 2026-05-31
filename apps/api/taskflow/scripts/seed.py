@@ -43,11 +43,11 @@ SEED_PASSWORD = "correct-horse-battery-staple"  # noqa: S105  # pragma: allowlis
 
 # ─── Users ──────────────────────────────────────────────────────────────────
 USERS = [
-    ("owner@aurora.test", "Aurora Owens", "owner"),
-    ("admin@aurora.test", "Adam Min", "admin"),
-    ("dev1@aurora.test", "Dana Engineer", "member"),
-    ("dev2@aurora.test", "Mason Code", "member"),
-    ("viewer@aurora.test", "Vivian Watch", "viewer"),
+    ("owner@aurora.example.com", "Aurora Owens", "owner"),
+    ("admin@aurora.example.com", "Adam Min", "admin"),
+    ("dev1@aurora.example.com", "Dana Engineer", "member"),
+    ("dev2@aurora.example.com", "Mason Code", "member"),
+    ("viewer@aurora.example.com", "Vivian Watch", "viewer"),
 ]
 
 # ─── Projects ───────────────────────────────────────────────────────────────
@@ -58,10 +58,10 @@ PROJECTS = [
     (
         "Mobile App Redesign",
         "purple",
-        ["dev1@aurora.test", "dev2@aurora.test", "viewer@aurora.test"],
+        ["dev1@aurora.example.com", "dev2@aurora.example.com", "viewer@aurora.example.com"],
     ),
-    ("API Migration", "blue", ["dev1@aurora.test"]),
-    ("Marketing Site", "green", ["viewer@aurora.test"]),
+    ("API Migration", "blue", ["dev1@aurora.example.com"]),
+    ("Marketing Site", "green", ["viewer@aurora.example.com"]),
 ]
 
 
@@ -94,7 +94,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Review and finalise sprint scope.",
         "in_progress",
         "high",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "today",
         ["blue", "purple"],
     ),
@@ -104,7 +104,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Document existing nav patterns.",
         "done",
         "medium",
-        "dev2@aurora.test",
+        "dev2@aurora.example.com",
         "none",
         ["blue", "green", "amber", "pink"],
     ),
@@ -114,7 +114,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Iterate on the bottom-tab layout.",
         "in_progress",
         "high",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "this_week_a",
         ["purple", "pink"],
     ),
@@ -124,7 +124,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Refresh first-run welcome copy.",
         "todo",
         "medium",
-        "dev2@aurora.test",
+        "dev2@aurora.example.com",
         "future_a",
         ["green"],
     ),
@@ -144,7 +144,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Implement DRD §16 empty states.",
         "in_review",
         "medium",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "overdue_a",
         ["amber", "blue"],
     ),
@@ -164,7 +164,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Honour prefers-reduced-motion.",
         "done",
         "low",
-        "dev2@aurora.test",
+        "dev2@aurora.example.com",
         "none",
         ["amber"],
     ),
@@ -174,7 +174,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Wire the new settings tabs.",
         "in_progress",
         "medium",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "this_week_b",
         ["blue"],
     ),
@@ -184,7 +184,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Investigate startup crash.",
         "in_progress",
         "urgent",
-        "dev2@aurora.test",
+        "dev2@aurora.example.com",
         "overdue_b",
         ["red"],
     ),
@@ -195,7 +195,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Draft the cutover runbook.",
         "in_review",
         "high",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "this_week_a",
         ["blue", "red"],
     ),
@@ -205,7 +205,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Add temporary auth shim.",
         "done",
         "medium",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "none",
         ["green"],
     ),
@@ -215,7 +215,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Diff legacy vs new responses.",
         "in_progress",
         "high",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "today",
         ["blue", "amber"],
     ),
@@ -235,7 +235,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Re-run K6 against the new stack.",
         "backlog",
         "medium",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "future_b",
         ["orange"],
     ),
@@ -245,7 +245,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Port webhook handlers.",
         "todo",
         "medium",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "future_a",
         ["orange", "blue"],
     ),
@@ -255,7 +255,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "One-shot to rebuild tsvector.",
         "in_progress",
         "urgent",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "overdue_a",
         ["red", "amber"],
     ),
@@ -265,7 +265,7 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
         "Document the schema diff.",
         "done",
         "low",
-        "dev1@aurora.test",
+        "dev1@aurora.example.com",
         "none",
         ["cyan"],
     ),
@@ -379,36 +379,44 @@ TASKS: list[tuple[int, str, str, str, str, str | None, str, list[str]]] = [
 COMMENTS = [
     (
         "Sprint planning review",
-        "owner@aurora.test",
+        "owner@aurora.example.com",
         "Looks good — @dev1 can you confirm the new acceptance criteria?",
     ),
-    ("Tab bar redesign", "admin@aurora.test", "@dev1 want to pair on this Friday afternoon?"),
+    (
+        "Tab bar redesign",
+        "admin@aurora.example.com",
+        "@dev1 want to pair on this Friday afternoon?",
+    ),
     (
         "Workspace endpoint parity",
-        "owner@aurora.test",
+        "owner@aurora.example.com",
         "I'm seeing a diff in the `members` shape — @dev1 ping me.",
     ),
     (
         "Empty states pass",
-        "dev2@aurora.test",
+        "dev2@aurora.example.com",
         "Most of these are wired; review when you have a moment.",
     ),
-    ("Cutover plan draft", "admin@aurora.test", "Add a rollback section before we ship."),
+    ("Cutover plan draft", "admin@aurora.example.com", "Add a rollback section before we ship."),
     (
         "Search reindex script",
-        "owner@aurora.test",
+        "owner@aurora.example.com",
         "@dev1 prioritise this — it's blocking the migration.",
     ),
-    ("New landing hero", "owner@aurora.test", "Copy is final — go ahead and ship."),
+    ("New landing hero", "owner@aurora.example.com", "Copy is final — go ahead and ship."),
     (
         "Pricing page revamp",
-        "admin@aurora.test",
+        "admin@aurora.example.com",
         "@admin can you double-check the enterprise tier copy?",
     ),
-    ("Accessibility audit", "owner@aurora.test", "We should run this against staging, not prod."),
+    (
+        "Accessibility audit",
+        "owner@aurora.example.com",
+        "We should run this against staging, not prod.",
+    ),
     (
         "Analytics events rename",
-        "admin@aurora.test",
+        "admin@aurora.example.com",
         "Reminder: prod schema is frozen — change names downstream first.",
     ),
 ]
@@ -545,7 +553,7 @@ async def seed() -> int:
         await db.flush()
 
         users_by_email = await _seed_users(db, workspace.id)
-        owner = users_by_email["owner@aurora.test"]
+        owner = users_by_email["owner@aurora.example.com"]
         workspace.created_by = owner.id
 
         labels_by_color = await _seed_labels(db, workspace.id, owner)

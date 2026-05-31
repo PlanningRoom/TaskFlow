@@ -79,7 +79,7 @@ async def test_signup_creates_workspace_and_owner_and_sets_cookies(
     # Cookies set with the right attributes (TDD §11.1).
     set_cookie = response.headers.get_list("set-cookie")
     session_cookies = [c for c in set_cookie if c.startswith("taskflow_session")]
-    csrf_cookies = [c for c in set_cookie if c.startswith("csrf_token")]
+    csrf_cookies = [c for c in set_cookie if c.startswith("taskflow_csrf")]
     assert session_cookies and csrf_cookies
     assert all("HttpOnly" in c for c in session_cookies)
     assert all("HttpOnly" not in c for c in csrf_cookies)  # JS-readable per ADR 051

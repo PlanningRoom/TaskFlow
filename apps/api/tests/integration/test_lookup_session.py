@@ -21,7 +21,7 @@ async def _make_user(db: AsyncSession) -> User:
     await db.flush()
     user = User(
         workspace_id=workspace.id,
-        email=f"u-{uuid7()}@aurora.test",
+        email=f"u-{uuid7()}@aurora.example.com",
         name="Aurora User",
         role="owner",
         password_hash="$argon2id$v=19$m=65536,t=3,p=4$xxxx$xxxx",  # not verified here

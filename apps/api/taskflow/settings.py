@@ -1,5 +1,6 @@
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -22,11 +23,13 @@ class Settings(BaseSettings):
 
     # Sessions / CSRF (ADR 047, 051; TDD §11)
     session_cookie_name: str = "taskflow_session"
-    csrf_cookie_name: str = "csrf_token"
+    csrf_cookie_name: str = "taskflow_csrf"
     csrf_header_name: str = "X-CSRF-Token"
     session_idle_ttl_days: int = 7
     session_absolute_ttl_days: int = 30
-    cookie_secure: bool = True  # Override to false in pure-localhost dev if needed.
+    # None → derived from app_env (dev: insecure so cookies persist over http://localhost;
+    # prod: Secure). Set COOKIE_SECURE explicitly to override the derived default.
+    cookie_secure: bool | None = None
 
     # Real-time fan-out (ADR 044, 045; TDD §10).
     realtime_enabled: bool = True
@@ -61,6 +64,14 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.app_env.lower() == "production"
+
+    @model_validator(mode="after")
+    def _default_cookie_secure(self) -> "Settings":
+        # When unset, secure cookies follow the environment: off in dev (so the
+        # browser stores them over plain http://localhost), on in production.
+        if self.cookie_secure is None:
+            self.cookie_secure = self.is_production
+        return self
 
 
 settings = Settings()

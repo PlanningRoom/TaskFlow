@@ -81,7 +81,9 @@ async def test_seed_creates_notifications_for_mentioned_members(
     assert workspace is not None
 
     dev1 = await db_session.scalar(
-        select(User).where(User.email == "dev1@aurora.test", User.workspace_id == workspace.id)
+        select(User).where(
+            User.email == "dev1@aurora.example.com", User.workspace_id == workspace.id
+        )
     )
     assert dev1 is not None
 
