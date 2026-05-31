@@ -171,3 +171,45 @@ jobs:
             -e 's|server web:80;|server 127.0.0.1:80;|' \
             infra/nginx/nginx.conf > /tmp/nginx-test/nginx.conf
           sudo nginx -t -c /tmp/nginx-test/nginx.conf
+
+  openapi-drift:
+    name: OpenAPI drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.17'
+          cache: pnpm
+
+      - name: Install JS deps
+        run: pnpm install --frozen-lockfile || pnpm install
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.5.4"
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Sync API deps
+        working-directory: apps/api
+        run: uv sync --frozen
+
+      - name: Regenerate OpenAPI types
+        # Dumps the schema offline (no Postgres) and runs openapi-typescript.
+        run: pnpm --filter @taskflow/api-types gen:api
+
+      - name: Fail if generated types are stale
+        # The committed openapi.json + schema.d.ts must match a fresh codegen
+        # (TDD §14.1). If this fails, run `pnpm gen:api` and commit the result.
+        run: git diff --exit-code packages/api-types/openapi.json packages/api-types/src/generated/schema.d.ts

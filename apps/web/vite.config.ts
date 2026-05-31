@@ -15,5 +15,11 @@ export default defineConfig({
   server: {
     host: '0.0.0.0',
     port: 5173,
+    // Proxy API + WebSocket to the FastAPI dev server so the SPA can use
+    // relative `/api/v1` paths (same-origin) and cookies flow without CORS.
+    proxy: {
+      '/api': { target: 'http://localhost:8000', changeOrigin: true },
+      '/ws': { target: 'http://localhost:8000', ws: true, changeOrigin: true },
+    },
   },
 });
