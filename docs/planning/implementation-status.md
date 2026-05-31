@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
 **Last Updated:** 2026-05-31
-**Current Phase:** Phase F2 — API Client and Type Codegen (next; Phase F1 complete — see Notes 2026-05-31)
+**Current Phase:** Phase G1 — Auth Screens (next; Part F Frontend Foundation complete — see Notes 2026-05-31 F2–F4)
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -52,11 +52,11 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | C | Backend Domain | 8 | 8 | 0 | 0 |
 | D | Backend Real-Time & Async | 2 | 2 | 0 | 0 |
 | E | Backend Hardening | 4 | 4 | 0 | 0 |
-| F | Frontend Foundation | 4 | 1 | 0 | 0 |
+| F | Frontend Foundation | 4 | 4 | 0 | 0 |
 | G | Frontend Screens | 8 | 0 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 0 | 0 | 0 |
 | I | E2E, Infra, Deploy | 6 | 0 | 0 | 0 |
-| **Total** | | **42** | **20** | **0** | **0** |
+| **Total** | | **42** | **23** | **0** | **0** |
 
 ---
 
@@ -286,38 +286,38 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 - [x] Logical CSS properties enforced
 - [x] Reduced-motion global rule
 
-#### Phase F2 — API Client and Type Codegen `[ ] Not started`
-- [ ] `pnpm gen:api` script using `openapi-typescript`
-- [ ] `openapi-drift` CI gate
-- [ ] Typed `apiClient` with auto CSRF header
-- [ ] `useApiQuery` / `useApiMutation` helpers
-- [ ] Smoke test against running backend
+#### Phase F2 — API Client and Type Codegen `[x] Complete`
+- [x] `pnpm gen:api` script using `openapi-typescript`
+- [x] `openapi-drift` CI gate
+- [x] Typed `apiClient` with auto CSRF header
+- [x] `useApiQuery` / `useApiMutation` helpers
+- [x] Smoke test against running backend — implemented as a mocked-`fetch` Vitest test (`client.test.ts`) asserting the ADR 043 envelope parses into `ApiError`; see F2 note re: offline approach
 
-#### Phase F3 — UI Primitives and Storybook `[ ] Not started`
-- [ ] Radix primitives + CVA installed
-- [ ] Storybook configured with `vitest-axe`
-- [ ] `Button` (Primary/Secondary/Ghost/Destructive)
-- [ ] `Input`, `Textarea`, `Select`
-- [ ] `Avatar` (deterministic color)
-- [ ] `StatusBadge`
-- [ ] `LabelChip`
-- [ ] `PriorityIcon`
-- [ ] `DueDate` (overdue/approaching styling)
-- [ ] `Toast` system
-- [ ] `Dialog`, `DropdownMenu`, `Tabs`, `Checkbox`, `Tooltip`
-- [ ] Lucide icons integrated with default sizing
-- [ ] Stories per variant per primitive; axe clean
+#### Phase F3 — UI Primitives and Storybook `[x] Complete`
+- [x] Radix primitives + CVA installed
+- [~] Storybook configured with `vitest-axe` — **Storybook deferred** (Vite 8 builder risk); verification via Vitest + `vitest-axe` test-per-primitive instead (see F3 note)
+- [x] `Button` (Primary/Secondary/Ghost/Destructive)
+- [x] `Input`, `Textarea`, `Select`
+- [x] `Avatar` (deterministic color)
+- [x] `StatusBadge`
+- [x] `LabelChip`
+- [x] `PriorityIcon`
+- [x] `DueDate` (overdue/approaching styling)
+- [x] `Toast` system
+- [x] `Dialog`, `DropdownMenu`, `Tabs`, `Checkbox`, `Tooltip`
+- [x] Lucide icons integrated with default sizing
+- [x] axe assertion per primitive (replaces "stories per variant" — see F3 note)
 
-#### Phase F4 — App Shell `[ ] Not started`
-- [ ] `_shell.tsx` three-zone layout (sidebar 240, header 52)
-- [ ] Sidebar: logo, primary nav, projects, bottom (Settings + user identity)
-- [ ] Header: breadcrumb, search, notification bell, user avatar
-- [ ] Logo + wordmark per DRD §5
-- [ ] Responsive shell (tablet collapse, mobile hamburger)
-- [ ] Route tree per screen inventory §3 (placeholders for all routes)
-- [ ] `/projects/:projectId` redirect → `/projects/:projectId/board`
-- [ ] Unauthenticated routes (`/login`, `/signup`, `/invitations/:token`) rendered outside the shell
-- [ ] `useCurrentUser` hook backed by `/auth/me`
+#### Phase F4 — App Shell `[x] Complete`
+- [x] `AppShell` three-zone layout (sidebar 240, header 52)
+- [x] Sidebar: logo, primary nav, projects, bottom (Settings + user identity)
+- [x] Header: breadcrumb, search, notification bell, user avatar
+- [x] Logo + wordmark per DRD §5
+- [~] Responsive shell — desktop + sidebar-hidden-below-`md` implemented; tablet icon rail (`Sidebar collapsed` prop exists) + mobile hamburger overlay polish deferred to a later phase (see F4 note)
+- [x] Route tree per screen inventory §3 (placeholders for all routes)
+- [x] `/projects/:projectId` redirect → `/projects/:projectId/board`
+- [x] Unauthenticated routes (`/login`, `/signup`, `/invitations/:token`) rendered outside the shell
+- [x] `useCurrentUser` hook backed by `/auth/me`
 
 ---
 
@@ -523,6 +523,31 @@ These were surfaced during plan validation (§6.4 of the implementation plan). R
 ## Notes
 
 Use this section as a running log of decisions, blockers, or context that should persist across sessions.
+
+### 2026-05-31 — Phases F2–F4 complete (Part F: Frontend Foundation done)
+
+F2, F3, and F4 landed together. `apps/web` now has a typed API client, the DRD §7 primitive library, and the full app shell + route tree. Part G (screens) is unblocked.
+
+**Phase F2 — API Client & Type Codegen**
+- **Offline schema dump (chosen over a live server):** `apps/api/taskflow/scripts/dump_openapi.py` imports the FastAPI app and writes `app.openapi()` to JSON with no uvicorn/Postgres (engine init is lazy in the lifespan; `Settings()` only reads env). Verified: OpenAPI 3.1, 33 paths, 63 schemas, no DB.
+- **Codegen:** `packages/api-types` gained `openapi-typescript` 7.6.1 + `scripts/gen.mjs` (`pnpm gen:api`): dump → `openapi.json` → `src/generated/schema.d.ts`. Both artifacts are committed as the drift baseline (`openapi.json` is NOT gitignored; only `apps/web/src/api/generated/` is). `src/index.ts` re-exports `paths`/`components`/`operations` + curated DTO aliases (`CurrentUser`, `TaskDetail`, …) and the hand-authored `ApiErrorEnvelope` (the ADR 043 envelope isn't an OpenAPI component).
+- **Typed client:** `apps/web/src/api/client.ts` — relative `/api/v1`, `credentials: 'include'` (session cookie), reads the JS-readable `csrf_token` cookie and sends `X-CSRF-Token` on POST/PATCH/PUT/DELETE, parses the ADR 043 envelope into a thrown `ApiError` (`status`/`code`/`message`/`fields`). `hooks.ts` adds `useApiQuery`/`useApiMutation` (error type fixed to `ApiError`). `vite.config.ts` gained a dev `server.proxy` for `/api` + `/ws` → `http://localhost:8000` so the SPA uses same-origin relative paths.
+- **CI:** new `openapi-drift` job (uv + pnpm) reruns `gen:api` and `git diff --exit-code`s the two artifacts (TDD §14.1). Verified locally: regen → clean diff.
+- **Smoke test:** `client.test.ts` mocks `fetch` and asserts envelope parsing, 422 `fields`, success payloads, and CSRF-header on/off by method. (The plan's "hit a running backend" became a mocked test — deterministic, no live API in CI.)
+
+**Phase F3 — UI Primitives (Vitest + axe; Storybook deferred)**
+- **Decision (confirmed with user):** Storybook's stable Vite builder targets Vite 5/6 — a real risk on our Vite 8. So F3 verifies primitives with **Vitest + @testing-library/react + vitest-axe** (jsdom), one test-per-primitive covering variants/states with a `toHaveNoViolations()` assertion, instead of Storybook stories. Storybook is deferred until its Vite 8 support lands; revisit alongside H5. This is the one place F3's literal DoD ("Storybook configured") is intentionally unmet.
+- **Built** in `apps/web/src/components/ui/` with `class-variance-authority` + token utilities: `Button`, `Input`/`Textarea`/`Select`/`FormLabel`, `Avatar`, `StatusBadge`, `LabelChip` (+`LabelOverflow`), `PriorityIcon`, `DueDate` (+`formatDueDate`), plus Radix-backed `Dialog`, `DropdownMenu`, `Tabs`, `Checkbox`, `Tooltip`, `Toast` (with a minimal `ToastProvider`/`useToast`; the richer store is H3). Lucide via `icons.ts`. 26 tests, all green.
+- **Test infra:** `vitest.config.ts` (jsdom) + `src/test/setup.ts` (registers jest-dom + vitest-axe matchers). `src/test/vitest.d.ts` augments the `vitest` module's `Assertion` with the axe matcher (Vitest 3 uses `declare module 'vitest'`, not the legacy `Vi` namespace that `vitest-axe/extend-expect` targets). `src/test/axe.ts` wraps `axe()` to disable the `color-contrast` rule under jsdom (no canvas/layout engine — it throws on `getContext`; contrast is a design-review check, not a unit test).
+
+**Phase F4 — App Shell & Routes**
+- `useCurrentUser` (`GET /auth/me`, 401 = unauthenticated, no retry) + `useProjects` (`GET /projects`) hooks. Shell in `src/components/shell/`: `Logo` (check-in-box SVG mark + wordmark, sidebar vs login sizing), `Sidebar` (240px / 60px collapsed rail; logo, Dashboard/Notifications nav, Projects list with color dots, pinned Settings + user identity), `Header` (breadcrumb, 260px ⌘K search placeholder, notification bell + badge, user avatar), `AppShell` (three-zone, header 52px). Tooltip/Toast providers mounted in `main.tsx`.
+- **Route tree** rewritten in `src/app/router.tsx` (code-based, TanStack Router 1.170.10): auth routes (`/login`, `/signup`, `/invitations/$token`) render OUTSIDE the shell via `AuthPlaceholder`; everything else hangs off a pathless `shellRoute` (renders `AppShell`, breadcrumb derived from pathname). Leaves are `PlaceholderPage`s (Part G fills them). Redirects: `/`→`/dashboard`, `/projects/$projectId`→`.../board`, `/settings`→`/settings/workspace`. The F1 `Placeholder.tsx` was removed. Auth redirect *guards* are deferred to G1 (F4 only structures the tree).
+- **Responsive:** desktop + sidebar-hidden-below-`md` done; the `Sidebar collapsed` icon-rail and the mobile hamburger overlay are deferred polish.
+
+**Known divergence — avatar palette names.** The API returns `avatar_color` ∈ `{indigo, violet, amber, emerald, rose, sky}` (`apps/api/taskflow/schemas/users.py`), but DRD §2.10 / `tokens.css` use `{purple, blue, green, amber, rose, cyan}`. `Avatar.tsx` maps API name → DRD token via a fixed, position-aligned record (preserving the deterministic distribution) and also accepts DRD names directly. Interim mapping is safe; ideally a later small backend change renames the palette strings to the DRD names, after which the alias rows in `Avatar.tsx` can be dropped.
+
+**Verification (all green):** `biome ci .` clean (63 files); `pnpm typecheck` (turbo) 2/2; `pnpm --filter @taskflow/web test` 26/26; `vite build` succeeds (CSS 17.3 KB / gzip 4.7 KB, JS 454 KB / gzip 143 KB); `pnpm dev` serves all routes + redirects (`/`, `/login`, `/dashboard`, `/projects/x`→board, `/settings`→workspace, …) at HTTP 200 with zero resolve errors; `openapi-drift` clean locally. **Three small lint accommodations:** scoped `biome-ignore` for `noDocumentCookie` (test CSRF-cookie fixtures), `noLabelWithoutControl` (the generic `FormLabel` primitive), and a `<title>` on the Logo SVG.
 
 ### 2026-05-31 — Phase F1 complete (Frontend Skeleton)
 

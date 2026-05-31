@@ -5,6 +5,8 @@ import { createRoot } from 'react-dom/client';
 import { IntlProvider } from 'react-intl';
 import { queryClient } from '@/app/query-client';
 import { router } from '@/app/router';
+import { ToastProvider } from '@/components/ui/Toast';
+import { TooltipProvider } from '@/components/ui/Tooltip';
 import { DEFAULT_LOCALE, messagesByLocale } from '@/i18n';
 import './styles/global.css';
 
@@ -19,7 +21,11 @@ createRoot(rootElement).render(
       messages={messagesByLocale[DEFAULT_LOCALE]}
     >
       <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
+        <TooltipProvider delayDuration={200}>
+          <ToastProvider>
+            <RouterProvider router={router} />
+          </ToastProvider>
+        </TooltipProvider>
       </QueryClientProvider>
     </IntlProvider>
   </StrictMode>,

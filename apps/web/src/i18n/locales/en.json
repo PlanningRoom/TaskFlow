@@ -1,5 +1,6 @@
 {
   "app.name": "TaskFlow",
   "app.skeletonReady": "Frontend skeleton is ready. Screens land in the next phases.",
+  "app.screenComingSoon": "This screen is coming soon.",
   "app.loading": "Loading…"
 }
