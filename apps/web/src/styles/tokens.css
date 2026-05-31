@@ -1,0 +1,96 @@
+/*
+ * TaskFlow design tokens — transcribed verbatim from DRD §2.
+ * Every visual value lives here as a CSS custom property so a future theme
+ * (e.g. dark mode) can be applied by swapping values without touching any
+ * component. Tailwind theme keys (tailwind.config.ts) reference these vars.
+ */
+
+:root {
+  /* §2.1 Color — Primary (Ocean Teal) */
+  --primary: #0d9488;
+  --primary-hover: #0f766e;
+  --primary-light: #f0fdfa;
+  --primary-lighter: #ccfbf1;
+  --primary-text: #115e59;
+  --primary-ring: rgba(13, 148, 136, 0.3);
+  --logo-color: #0d9488;
+
+  /* §2.2 Color — Backgrounds (Warm Neutral) */
+  --bg-app: #faf9f7;
+  --bg-sidebar: #f5f3ef;
+  --bg-card: #ffffff;
+  --bg-surface: #f5f3ef;
+  --bg-hover: #f0ede8;
+  --bg-input: #ffffff;
+  --bg-column: #f5f3ef;
+  --login-bg: #f0ede8;
+
+  /* §2.3 Color — Text (Warm Neutral) */
+  --text-primary: #2c2418;
+  --text-secondary: #75695a;
+  --text-tertiary: #a39888;
+  --text-on-surface: #4a3f33;
+  --sidebar-text: #5c5244;
+
+  /* §2.4 Color — Borders & Dividers */
+  --border-color: #e8e4dd;
+  --border-input: #d4cfc7;
+  --border-sidebar: #e8e4dd;
+  --divider: #ece8e1;
+
+  /* §2.5 Color — Shadows (warm-tinted rgba 120,100,70) */
+  --shadow-card: 0 1px 3px rgba(120, 100, 70, 0.06), 0 2px 8px rgba(120, 100, 70, 0.03);
+  --shadow-card-hover: 0 3px 10px rgba(120, 100, 70, 0.09);
+  --shadow-panel: 0 4px 16px rgba(120, 100, 70, 0.08);
+  --shadow-modal: 0 8px 30px rgba(120, 100, 70, 0.12);
+  --shadow-dropdown: 0 4px 12px rgba(120, 100, 70, 0.08);
+
+  /* §2.6 Color — Status (foreground / background pairs) */
+  --status-backlog-fg: #94a3b8;
+  --status-backlog-bg: #f1f5f9;
+  --status-todo-fg: #3b82f6;
+  --status-todo-bg: #eff6ff;
+  --status-progress-fg: #f59e0b;
+  --status-progress-bg: #fffbeb;
+  --status-review-fg: #8b5cf6;
+  --status-review-bg: #f5f3ff;
+  --status-done-fg: #22c55e;
+  --status-done-bg: #f0fdf4;
+  --status-cancelled-fg: #e879a0;
+  --status-cancelled-bg: #fff1f2;
+
+  /* §2.7 Color — Priority */
+  --priority-urgent: #ef4444;
+  --priority-high: #f97316;
+  --priority-medium: #eab308;
+  --priority-low: #3b82f6;
+
+  /* §2.8 Color — Semantic */
+  --semantic-error: #ef4444;
+  --semantic-error-bg: #fef2f2;
+  --semantic-success: #22c55e;
+  --semantic-warning: #f59e0b;
+
+  /* §2.9 Color — Label Palette (8 fixed colors, white text) */
+  --label-blue: #3b82f6;
+  --label-green: #22c55e;
+  --label-red: #ef4444;
+  --label-purple: #8b5cf6;
+  --label-amber: #f59e0b;
+  --label-pink: #ec4899;
+  --label-cyan: #06b6d4;
+  --label-orange: #f97316;
+
+  /* §2.10 Color — Avatar Palette (6 fixed colors, hashed by user id) */
+  --avatar-purple: #8b5cf6;
+  --avatar-blue: #3b82f6;
+  --avatar-green: #059669;
+  --avatar-amber: #d97706;
+  --avatar-rose: #e11d48;
+  --avatar-cyan: #0891b2;
+
+  /* §2.12 Border Radius */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+}

@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
-**Last Updated:** 2026-05-30
-**Current Phase:** Phase F1 — Frontend Skeleton (next; Dependabot frontend majors window now closed — see Notes 2026-05-30)
+**Last Updated:** 2026-05-31
+**Current Phase:** Phase F2 — API Client and Type Codegen (next; Phase F1 complete — see Notes 2026-05-31)
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -52,11 +52,11 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | C | Backend Domain | 8 | 8 | 0 | 0 |
 | D | Backend Real-Time & Async | 2 | 2 | 0 | 0 |
 | E | Backend Hardening | 4 | 4 | 0 | 0 |
-| F | Frontend Foundation | 4 | 0 | 0 | 0 |
+| F | Frontend Foundation | 4 | 1 | 0 | 0 |
 | G | Frontend Screens | 8 | 0 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 0 | 0 | 0 |
 | I | E2E, Infra, Deploy | 6 | 0 | 0 | 0 |
-| **Total** | | **42** | **19** | **0** | **0** |
+| **Total** | | **42** | **20** | **0** | **0** |
 
 ---
 
@@ -274,17 +274,17 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 
 ### Part F — Frontend Foundation
 
-#### Phase F1 — Frontend Skeleton `[ ] Not started`
-- [ ] Vite + React 19 + TS strict
-- [ ] Tailwind v3 mapped to CSS custom properties
-- [ ] `tokens.css` with every DRD §2 token on `:root`
-- [ ] Inter font from Google Fonts
-- [ ] TanStack Query v5 with `QueryClientProvider`
-- [ ] TanStack Router v1 with empty route tree
-- [ ] React Hook Form + Zod added; shared schemas dir
-- [ ] `react-intl` + English `locales/en.json`
-- [ ] Logical CSS properties enforced
-- [ ] Reduced-motion global rule
+#### Phase F1 — Frontend Skeleton `[x] Complete`
+- [x] Vite + React 19 + TS strict
+- [x] Tailwind v3 mapped to CSS custom properties
+- [x] `tokens.css` with every DRD §2 token on `:root`
+- [x] Inter font from Google Fonts
+- [x] TanStack Query v5 with `QueryClientProvider`
+- [x] TanStack Router v1 with empty route tree
+- [x] React Hook Form + Zod added; shared schemas dir
+- [x] `react-intl` + English `locales/en.json`
+- [x] Logical CSS properties enforced
+- [x] Reduced-motion global rule
 
 #### Phase F2 — API Client and Type Codegen `[ ] Not started`
 - [ ] `pnpm gen:api` script using `openapi-typescript`
@@ -523,6 +523,22 @@ These were surfaced during plan validation (§6.4 of the implementation plan). R
 ## Notes
 
 Use this section as a running log of decisions, blockers, or context that should persist across sessions.
+
+### 2026-05-31 — Phase F1 complete (Frontend Skeleton)
+
+First frontend code lands. `apps/web` now boots a token-styled React app and is ready to host routes (Phase F4) and screens (Part G).
+
+- **Stack on the PR #19 toolchain:** React 19.2 + Vite 8 + `@vitejs/plugin-react` 6 + TypeScript 6 (strict, retained from the existing `tsconfig.json`). Added: Tailwind v3 (`tailwindcss` 3.4.17 + `postcss` 8.5.3 + `autoprefixer` 10.4.21), TanStack Query v5 (5.69.0), TanStack Router v1 (1.170.10 — see note below), React Hook Form 7.55 + Zod 3.24 + `@hookform/resolvers` 3.10, `react-intl` 7.1.
+- **Design tokens (ADR 057 / DRD §2):** `src/styles/tokens.css` transcribes every DRD §2 value onto `:root` (teal primary scale, warm-neutral bg/text/border, shadows with the warm 120,100,70 rgba tint, status fg/bg pairs, priority, semantic, the 8-color label palette, the 6-color avatar palette, radii). `tailwind.config.ts` maps theme keys to these vars so a future theme swap touches only the token file. Spacing left at Tailwind's default 4px scale (matches DRD §2.11).
+- **Typography (DRD §3):** Inter loaded via Google Fonts in `index.html` (preconnect + 400/500/600/700); the `font-family` stack and the 600-weight heading rule live in `src/styles/global.css` (the stack is duplicated there and in `fontFamily.sans` rather than `@apply`'d — see the Biome note).
+- **Providers:** `src/main.tsx` composes `IntlProvider` → `QueryClientProvider` → `RouterProvider`. Query client in `src/app/query-client.ts` (retry off so ADR 043 error envelopes surface immediately). Router in `src/app/router.tsx` is a minimal code-based tree — a root route (renders `<Outlet />`) with one placeholder index route at `/` via `addChildren`; the full shell/auth/project tree is Phase F4. i18n catalog at `src/i18n/locales/en.json` (flat id→string map).
+- **Forms:** shared Zod primitives in `src/forms/schemas/index.ts` (`emailSchema`, `passwordSchema` min-8 mirroring the B4 backend rule, `displayNameSchema`) for feature forms to compose in G1/G8.
+- **Reduced motion (ADR 025 / TDD §6.5):** global `prefers-reduced-motion: reduce` rule in `global.css` neutralises animations/transitions/smooth-scroll app-wide. Logical-property utilities (Tailwind `ms-/me-/ps-/pe-`, `min-h-dvh`) are available and used; there is no Biome rule that *enforces* logical-over-physical, so that stays a code-review convention rather than a lint gate.
+- **Biome (ADR 078):** Tailwind needed three accommodations in `biome.json`/CSS. (1) `@apply` is a Biome CSS **parser** error (not a lint rule), so `global.css` uses an explicit `font-family` stack instead of `@apply font-sans`. (2) `@tailwind base/components/utilities` trips `suspicious/noUnknownAtRules` and (3) the reduced-motion `!important` block trips `complexity/noImportantStyles` — both rules are turned off for `**/*.css` only via a scoped `overrides` entry in the root `biome.json`. All other rules (including a11y) stay on for CSS.
+- **TanStack Router version bump:** initially pinned 1.114.3, but its route generics inferred `rootRoute.addChildren([...])`'s parameter as `never` under React 19 + TS 6 strict (the canonical docs pattern wouldn't typecheck). Bumped to **1.170.10** (current 1.x, solid React 19 type support) where the standard root + index tree compiles cleanly; `pnpm-lock.yaml` updated.
+- **Vite path alias:** `@/*` is declared in `tsconfig.json`, which `tsc` and the Rolldown production build honour — but Vite's **dev** import-analysis does not read tsconfig `paths`, so `pnpm dev` initially 500'd on `@/app/...` imports while `build` passed. Added a matching `resolve.alias` (`@` → `./src`) in `vite.config.ts`; dev and build now agree.
+- **Verification:** `biome ci .` clean; root `pnpm typecheck` (turbo) green across both workspaces that have the task (`api-types` + `web`; `config` has none); `vite build` succeeds (CSS 6.84 KB / gzip 2.46 KB, JS 355 KB / gzip 110 KB) and the bundled CSS contains the tokens + reduced-motion rule + Inter; `pnpm dev` serves `/`, `/src/main.tsx`, and `/src/app/router.tsx` with HTTP 200 and zero resolve errors. `pnpm-lock.yaml` was updated and should be committed with this phase (Part F is the first time frontend deps exist).
+- **Not done here:** Lighthouse a11y baseline (DoD ≥90) was **not** run programmatically — the placeholder is a minimal semantic page (`main`/`h1`/`p`, `lang="en"`, token-driven contrast) expected to clear it comfortably; confirm with a real Lighthouse pass once the app shell (F4) renders representative content.
 
 ### 2026-05-02 — Phase 0 complete
 
