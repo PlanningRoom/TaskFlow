@@ -25,7 +25,7 @@
     "@taskflow/api-types": "workspace:*",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
-    "lucide-react": "0.479.0",
+    "lucide-react": "1.17.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-hook-form": "7.55.0",
