@@ -66,8 +66,48 @@ export const passwordResetConfirmSchema = z
     path: ['confirmPassword'],
   });
 
+// --- Project form schemas (Phase G2) --------------------------------------
+// Mirrors CreateProjectRequest in apps/api/taskflow/schemas/projects.py.
+
+export const createProjectSchema = z.object({
+  name: z.string().trim().min(1, 'Project name is required').max(120, 'Project name is too long'),
+  description: z.string().trim().max(2000, 'Description is too long').optional(),
+});
+
+// --- Task / settings form schemas (Phases G3–G8) --------------------------
+
+export const createTaskSchema = z.object({
+  title: z.string().trim().min(1, 'Title is required').max(400, 'Title is too long'),
+  description: z.string().trim().max(20000, 'Description is too long').optional(),
+});
+
+export const inviteMemberSchema = z.object({
+  email: emailSchema,
+  role: z.enum(['admin', 'member', 'viewer']),
+});
+
+export const labelSchema = z.object({
+  name: z.string().trim().min(1, 'Label name is required').max(64, 'Label name is too long'),
+  color: z.enum(['blue', 'green', 'red', 'purple', 'amber', 'pink', 'cyan', 'orange']),
+});
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Enter your current password'),
+  newPassword: passwordSchema,
+});
+
+export const deleteAccountSchema = z.object({
+  password: z.string().min(1, 'Enter your password to confirm'),
+});
+
 export type LoginValues = z.infer<typeof loginSchema>;
 export type SignupValues = z.infer<typeof signupSchema>;
 export type AcceptInvitationValues = z.infer<typeof acceptInvitationSchema>;
 export type PasswordResetRequestValues = z.infer<typeof passwordResetRequestSchema>;
 export type PasswordResetConfirmValues = z.infer<typeof passwordResetConfirmSchema>;
+export type CreateProjectValues = z.infer<typeof createProjectSchema>;
+export type CreateTaskValues = z.infer<typeof createTaskSchema>;
+export type InviteMemberValues = z.infer<typeof inviteMemberSchema>;
+export type LabelValues = z.infer<typeof labelSchema>;
+export type ChangePasswordValues = z.infer<typeof changePasswordSchema>;
+export type DeleteAccountValues = z.infer<typeof deleteAccountSchema>;

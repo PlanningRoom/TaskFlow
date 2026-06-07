@@ -2,6 +2,7 @@
 export { Avatar, colorClassForId } from './Avatar';
 export { Button, type ButtonProps } from './Button';
 export { Checkbox } from './Checkbox';
+export { ConfirmDialog } from './ConfirmDialog';
 export {
   Dialog,
   DialogClose,

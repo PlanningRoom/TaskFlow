@@ -14,8 +14,17 @@ import { LoginScreen } from '@/features/auth/LoginScreen';
 import { PasswordResetConfirmScreen } from '@/features/auth/PasswordResetConfirmScreen';
 import { PasswordResetRequestScreen } from '@/features/auth/PasswordResetRequestScreen';
 import { SignupScreen } from '@/features/auth/SignupScreen';
+import { DashboardScreen } from '@/features/dashboard/DashboardScreen';
+import { NotificationsScreen } from '@/features/notifications/NotificationsScreen';
+import { LabelsTab } from '@/features/settings/LabelsTab';
+import { MembersTab } from '@/features/settings/MembersTab';
+import { ProfileTab } from '@/features/settings/ProfileTab';
+import { SettingsLayout } from '@/features/settings/SettingsLayout';
+import { WorkspaceTab } from '@/features/settings/WorkspaceTab';
+import { ProjectView } from '@/features/tasks/ProjectView';
+import { validateTaskSearch } from '@/features/tasks/taskQueryState';
 import { CURRENT_USER_KEY } from '@/hooks/useCurrentUser';
-import { PlaceholderPage } from '@/routes/PlaceholderPage';
+import { getLastView } from '@/lib/projectView';
 import { queryClient } from './query-client';
 
 /**
@@ -127,13 +136,13 @@ const indexRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/dashboard',
-  component: () => <PlaceholderPage title="Dashboard" />,
+  component: DashboardScreen,
 });
 
 const notificationsRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/notifications',
-  component: () => <PlaceholderPage title="Notifications" />,
+  component: NotificationsScreen,
 });
 
 // Bare /projects/$projectId redirects to the board (default view).
@@ -148,20 +157,42 @@ const projectIndexRoute = createRoute({
 const projectBoardRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/projects/$projectId/board',
-  component: () => <PlaceholderPage title="Board" />,
+  validateSearch: validateTaskSearch,
+  component: function BoardRouteComponent() {
+    const { projectId } = projectBoardRoute.useParams();
+    const search = projectBoardRoute.useSearch();
+    return <ProjectView projectId={projectId} view="board" search={search} />;
+  },
 });
 
 const projectListRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/projects/$projectId/list',
-  component: () => <PlaceholderPage title="List" />,
+  validateSearch: validateTaskSearch,
+  component: function ListRouteComponent() {
+    const { projectId } = projectListRoute.useParams();
+    const search = projectListRoute.useSearch();
+    return <ProjectView projectId={projectId} view="list" search={search} />;
+  },
 });
 
-// Task detail is a panel over the board (screen inventory §9.1); placeholder page for now.
+// Task detail renders as a panel over the project's last-used view (DRD §9).
 const taskDetailRoute = createRoute({
   getParentRoute: () => shellRoute,
   path: '/projects/$projectId/tasks/$taskId',
-  component: () => <PlaceholderPage title="Task detail" />,
+  validateSearch: validateTaskSearch,
+  component: function TaskDetailRouteComponent() {
+    const { projectId, taskId } = taskDetailRoute.useParams();
+    const search = taskDetailRoute.useSearch();
+    return (
+      <ProjectView
+        projectId={projectId}
+        view={getLastView(projectId)}
+        search={search}
+        taskId={taskId}
+      />
+    );
+  },
 });
 
 const settingsIndexRoute = createRoute({
@@ -172,17 +203,27 @@ const settingsIndexRoute = createRoute({
   },
 });
 
-const settingsTab = (tab: string, title: string) =>
+type SettingsTabKey = 'workspace' | 'members' | 'labels' | 'profile';
+
+const settingsTab = (
+  tab: SettingsTabKey,
+  requiresManage: boolean,
+  Content: () => React.ReactNode,
+) =>
   createRoute({
     getParentRoute: () => shellRoute,
     path: `/settings/${tab}`,
-    component: () => <PlaceholderPage title={`Settings — ${title}`} />,
+    component: () => (
+      <SettingsLayout tab={tab} requiresManage={requiresManage}>
+        <Content />
+      </SettingsLayout>
+    ),
   });
 
-const settingsWorkspaceRoute = settingsTab('workspace', 'Workspace');
-const settingsMembersRoute = settingsTab('members', 'Members');
-const settingsLabelsRoute = settingsTab('labels', 'Labels');
-const settingsProfileRoute = settingsTab('profile', 'Profile');
+const settingsWorkspaceRoute = settingsTab('workspace', true, WorkspaceTab);
+const settingsMembersRoute = settingsTab('members', true, MembersTab);
+const settingsLabelsRoute = settingsTab('labels', true, LabelsTab);
+const settingsProfileRoute = settingsTab('profile', false, ProfileTab);
 
 const routeTree = rootRoute.addChildren([
   loginRoute,

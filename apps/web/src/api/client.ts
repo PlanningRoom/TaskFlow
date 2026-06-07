@@ -47,8 +47,11 @@ export interface RequestOptions {
   method?: string;
   /** JSON-serializable request body. Sent as `application/json`. */
   body?: unknown;
-  /** Query parameters; `undefined`/`null` values are dropped. */
-  query?: Record<string, string | number | boolean | undefined | null>;
+  /**
+   * Query parameters; `undefined`/`null` values are dropped. Array values are
+   * appended as repeated params (`?status=a&status=b`) for FastAPI list params.
+   */
+  query?: Record<string, string | number | boolean | undefined | null | Array<string | number>>;
   signal?: AbortSignal;
 }
 
@@ -57,7 +60,12 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
   if (!query) return url;
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(query)) {
-    if (value !== undefined && value !== null) params.append(key, String(value));
+    if (value === undefined || value === null) continue;
+    if (Array.isArray(value)) {
+      for (const item of value) params.append(key, String(item));
+    } else {
+      params.append(key, String(value));
+    }
   }
   const qs = params.toString();
   return qs ? `${url}?${qs}` : url;

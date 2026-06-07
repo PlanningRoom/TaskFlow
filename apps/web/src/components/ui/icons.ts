@@ -4,16 +4,22 @@
  * lets us apply DRD §4.2 default sizing/stroke via <Icon> below.
  */
 export {
+  ArrowUpDown,
   Bell,
+  Calendar,
   Check,
   CheckSquare,
   ChevronDown,
+  ChevronUp,
   Filter,
   LayoutGrid,
   List,
   type LucideIcon,
+  MessageSquare,
+  Pencil,
   Plus,
   Search,
   Settings,
+  Trash2,
   X,
 } from 'lucide-react';

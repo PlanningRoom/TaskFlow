@@ -1,6 +1,8 @@
 import { Link } from '@tanstack/react-router';
 import { Avatar } from '@/components/ui/Avatar';
 import { Bell, LayoutGrid, Plus, Settings } from '@/components/ui/icons';
+import { CreateProjectModal } from '@/features/dashboard/CreateProjectModal';
+import { canCreateProject } from '@/features/dashboard/useDashboard';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useProjects } from '@/hooks/useProjects';
 import { cn } from '@/lib/cn';
@@ -48,14 +50,20 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
             <span className="text-[11px] font-semibold uppercase tracking-[0.05em] text-text-tertiary">
               Projects
             </span>
-            <button
-              type="button"
-              className="rounded-sm p-0.5 text-text-tertiary hover:bg-bg-hover hover:text-text-primary"
-              title="New project"
-              aria-label="New project"
-            >
-              <Plus size={16} strokeWidth={1.75} />
-            </button>
+            {user && canCreateProject(user.role) ? (
+              <CreateProjectModal
+                trigger={
+                  <button
+                    type="button"
+                    className="rounded-sm p-0.5 text-text-tertiary hover:bg-bg-hover hover:text-text-primary"
+                    title="New project"
+                    aria-label="New project"
+                  >
+                    <Plus size={16} strokeWidth={1.75} />
+                  </button>
+                }
+              />
+            ) : null}
           </div>
           <div className="flex flex-col gap-0.5 overflow-y-auto">
             {projects.map((p) => (
