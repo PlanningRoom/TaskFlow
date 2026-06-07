@@ -80,8 +80,9 @@ export function TaskDetailPanel({
         className="absolute inset-0 bg-black/25"
         onClick={onClose}
       />
-      <aside
+      <div
         role="dialog"
+        aria-modal="true"
         aria-label={intl.formatMessage({ id: 'task.panel.label' })}
         className={cn(
           'relative flex h-full w-full max-w-[480px] flex-col bg-bg-card shadow-modal transition-transform duration-200 ease-out motion-reduce:transition-none',
@@ -115,7 +116,7 @@ export function TaskDetailPanel({
             onDescription={(description) => updateTask.mutate({ description })}
           />
         )}
-      </aside>
+      </div>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
-**Last Updated:** 2026-05-31
-**Current Phase:** Phase G2 — Dashboard (next; Phase G1 Auth Screens complete — see Notes 2026-05-31 G1)
+**Last Updated:** 2026-06-07
+**Current Phase:** Part H — Frontend Cross-Cutting (next; Part G Frontend Screens complete — see Notes 2026-06-07 G2–G8)
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -53,10 +53,10 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | D | Backend Real-Time & Async | 2 | 2 | 0 | 0 |
 | E | Backend Hardening | 4 | 4 | 0 | 0 |
 | F | Frontend Foundation | 4 | 4 | 0 | 0 |
-| G | Frontend Screens | 8 | 1 | 0 | 0 |
+| G | Frontend Screens | 8 | 8 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 0 | 0 | 0 |
 | I | E2E, Infra, Deploy | 6 | 0 | 0 | 0 |
-| **Total** | | **42** | **24** | **0** | **0** |
+| **Total** | | **42** | **31** | **0** | **0** |
 
 ---
 
@@ -332,75 +332,75 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 - [x] Mutation hooks hydrate user cache + navigate (`useAuthSuccess`); shell route guard redirects unauthenticated users to `/login`
 - [x] Component + axe tests (24 new tests; full web suite 50 green)
 
-#### Phase G2 — Dashboard `[ ] Not started`
-- [ ] Two-column 60/40 grid
-- [ ] My Tasks section (groups by project)
-- [ ] Recent Activity section (with relative timestamps)
-- [ ] Projects section (color dot + status counts)
-- [ ] Empty states (role-aware)
-- [ ] First-run prompts (Owner / invited user)
-- [ ] Create Project modal (reused by sidebar `+`, dashboard empty state, first-run prompt)
-- [ ] Wired to dashboard + activity endpoints
-- [ ] Component + axe tests
+#### Phase G2 — Dashboard `[x] Complete`
+- [x] Two-column 60/40 grid
+- [x] My Tasks section (groups by project)
+- [x] Recent Activity section (with relative timestamps)
+- [x] Projects section (color dot + status counts)
+- [x] Empty states (role-aware)
+- [x] First-run prompts (Owner / invited user)
+- [x] Create Project modal (reused by sidebar `+`, dashboard empty state, first-run prompt)
+- [x] Wired to dashboard + activity endpoints
+- [x] Component + axe tests
 
-#### Phase G3 — Board View `[ ] Not started`
-- [ ] Sub-nav (view toggle, filter button, active filter chips, "Clear all" link, sort dropdown, project settings icon, Create task button)
-- [ ] Filter chip bar
-- [ ] Five columns; cancelled hidden by default
-- [ ] Task cards (title, labels, meta row)
-- [ ] Drag-and-drop with `@dnd-kit/core` (desktop only)
-- [ ] Optimistic status update with rollback + error toast
-- [ ] URL-driven filter + sort state
-- [ ] Project Settings modal (Details + Access tabs, screen inventory §5.2)
-- [ ] Mobile column stacking, status via dropdown
-- [ ] Component + axe tests
+#### Phase G3 — Board View `[x] Complete`
+- [x] Sub-nav (view toggle, filter button, active filter chips, "Clear all" link, sort dropdown, project settings icon, Create task button)
+- [x] Filter chip bar
+- [x] Five columns; cancelled hidden by default
+- [x] Task cards (title, labels, meta row)
+- [x] Drag-and-drop with `@dnd-kit/core` (desktop only)
+- [x] Optimistic status update with rollback + error toast
+- [x] URL-driven filter + sort state
+- [x] Project Settings modal (Details + Access tabs, screen inventory §5.2)
+- [~] Mobile column stacking, status via dropdown — **deferred** with the rest of the responsive/mobile polish (see F4 note; DRD §15)
+- [x] Component + axe tests
 
-#### Phase G4 — List View `[ ] Not started`
-- [ ] Sortable columns (title, status, assignee, priority, due, labels)
-- [ ] Inline status dropdown (role-gated)
-- [ ] Shared filter/sort URL state with board view
-- [ ] Mobile responsive (scroll or stacked)
-- [ ] Component + axe tests
+#### Phase G4 — List View `[x] Complete`
+- [x] Sortable columns (title, status, assignee, priority, due, labels) — sortable on the backend-supported keys (priority, due, assignee); title/status header sort not offered
+- [x] Inline status dropdown (role-gated)
+- [x] Shared filter/sort URL state with board view
+- [~] Mobile responsive (scroll or stacked) — **deferred** with the responsive/mobile polish (see F4 note)
+- [x] Component + axe tests
 
-#### Phase G5 — Task Detail Panel `[ ] Not started`
-- [ ] Panel route with backdrop + Esc + × dismissal
-- [ ] Slide-in 200ms ease-out, reduced-motion respected
-- [ ] Header (title editable, status dropdown, close)
-- [ ] Properties (assignee, priority, due date, labels) with inline editors
-- [ ] Viewer read-only state
-- [ ] Description (rendered Markdown ↔ edit mode)
-- [ ] Markdown pipeline (`react-markdown` + `remark-gfm` + `rehype-sanitize`)
-- [ ] Comments section (chronological + new comment input)
-- [ ] @mention autocomplete
-- [ ] Mobile full-screen
-- [ ] Component + axe tests
+#### Phase G5 — Task Detail Panel `[x] Complete`
+- [x] Panel route with backdrop + Esc + × dismissal
+- [x] Slide-in 200ms ease-out, reduced-motion respected
+- [x] Header (title editable, status dropdown, close)
+- [x] Properties (assignee, priority, due date, labels) with inline editors
+- [x] Viewer read-only state
+- [x] Description (rendered Markdown ↔ edit mode)
+- [x] Markdown pipeline (`react-markdown` + `remark-gfm` + `rehype-sanitize`)
+- [x] Comments section (chronological + new comment input)
+- [x] @mention autocomplete
+- [x] Mobile full-screen
+- [x] Component + axe tests
 
-#### Phase G6 — Notifications Page and Badge `[ ] Not started`
-- [ ] Notifications page (reverse chronological)
-- [ ] Read/unread styling + Mark all as read
-- [ ] Click marks read + navigates
-- [ ] Header badge bound to unread count
-- [ ] Empty state per DRD §16
-- [ ] Component + axe tests
+#### Phase G6 — Notifications Page and Badge `[x] Complete`
+- [x] Notifications page (reverse chronological)
+- [x] Read/unread styling + Mark all as read
+- [x] Click marks read + navigates
+- [x] Header badge bound to unread count
+- [x] Empty state per DRD §16
+- [x] Component + axe tests
 
-#### Phase G7 — Search Overlay `[ ] Not started`
-- [ ] Search input + ⌘K trigger
-- [ ] Dropdown results (title with match highlight, project, status badge)
-- [ ] Keyboard nav (arrows, Enter, Esc)
-- [ ] Debounced query against `/search`
-- [ ] Empty results message
-- [ ] Component + axe tests
+#### Phase G7 — Search Overlay `[x] Complete`
+- [x] Search input + ⌘K trigger
+- [x] Dropdown results (title with match highlight, project, status badge)
+- [x] Keyboard nav (arrows, Enter, Esc)
+- [x] Debounced query against `/search`
+- [x] Empty results message
+- [x] Component + axe tests
 
-#### Phase G8 — Settings (Workspace, Members, Labels, Profile) `[ ] Not started`
-- [ ] Settings layout with sub-navigation
-- [ ] Workspace tab (name + Save, Owner/Admin only)
-- [ ] Members tab (table + invite/remove modals)
-- [ ] Labels tab (list + create/edit/delete modals with palette swatches)
-- [ ] Profile tab — display name save (`PATCH /auth/me`)
-- [ ] Profile tab — change password section (`POST /auth/change-password`)
-- [ ] Profile tab — Delete Account modal (`DELETE /auth/me`, password-confirmed)
-- [ ] Last-used view per project persisted to `localStorage`
-- [ ] Component + axe tests
+#### Phase G8 — Settings (Workspace, Members, Labels, Profile) `[x] Complete`
+- [x] Settings layout with sub-navigation
+- [x] Workspace tab (name + Save, Owner/Admin only)
+- [x] Members tab (table + invite/remove modals)
+- [x] Labels tab (list + create/edit/delete modals with palette swatches)
+- [x] Profile tab — display name save (`PATCH /auth/me`)
+- [x] Profile tab — change password section (`POST /auth/change-password`)
+- [x] Profile tab — Delete Account modal (`DELETE /auth/me`, password-confirmed)
+- [x] Last-used view per project persisted to `localStorage`
+- [x] Component + axe tests
 
 ---
 
@@ -523,6 +523,32 @@ These were surfaced during plan validation (§6.4 of the implementation plan). R
 ## Notes
 
 Use this section as a running log of decisions, blockers, or context that should persist across sessions.
+
+### 2026-06-07 — Phases G2–G8 complete (all Frontend Screens)
+
+Part G is done. The placeholder routes are now the real product, built against the API-complete backend on the conventions G1 established (typed `apiClient`, `react-intl`, UI primitives, RHF+Zod, `renderWithProviders` + `vitest-axe`). Landed on branch `feat/web-part-g-screens` (commit + a follow-up tests commit).
+
+**Built** (representative paths under `apps/web/src/`):
+- **G2 Dashboard** (`features/dashboard/`): My Tasks / Recent Activity / Projects, role-aware empty + first-run states, reusable `CreateProjectModal`.
+- **G3 Board** (`features/board/`, `features/tasks/ProjectView` + `ProjectSubNav`): `@dnd-kit` columns with optimistic status (`useUpdateTaskStatus`, ADR 046), filter popover + chips, sort, `CreateTaskModal`.
+- **G4 List** (`features/list/`): sortable table (backend-supported keys), inline status, shared filter/sort URL state.
+- **G5 Task Detail panel** (`features/tasks/TaskDetailPanel`): route overlay, inline property editors, Markdown description (`components/Markdown.tsx`), comments + `@mention` autocomplete (`MentionTextarea`), Viewer read-only.
+- **G6 Notifications** (`features/notifications/`): list + mark-all-read, live header bell badge.
+- **G7 Search** (`features/search/`): ⌘K overlay, debounced `/search`, keyboard nav, match highlight.
+- **G8 Settings** (`features/settings/`): workspace / members (+invite/remove) / labels (+create/edit/delete) / profile (name, password, delete-account), role-gated `SettingsLayout` redirects.
+
+**Cross-cutting:** new domain hooks (`useTasks`/`useComments`/`useNotifications`/`useSearch`/settings + `useProject`); `ConfirmDialog`; URL filter-sort state (`taskQueryState`); `lib/projectView` last-used-view localStorage; array query-param support added to `apiClient`; `renderWithProviders` now wraps `ToastProvider` to mirror `main.tsx` (fixed 3 latent G2 test failures that never ran while vitest was blocked).
+
+**Deps added** (net-new runtime, per ADRs): `@dnd-kit/core|sortable|utilities` (ADR 059), `react-markdown` + `remark-gfm` + `rehype-sanitize` (ADR 060).
+
+**Verification:** `tsc -b` clean, `biome check` clean, **vitest 97/97 green** (26 files).
+
+**Deferred (tracked, not regressions):**
+- Responsive/mobile polish (board column stacking, list mobile layout) — carried with the F4 responsive-shell deferral (DRD §15).
+- @mention **rendering** in posted comments shows the raw `@handle` text rather than teal-styled chips; autocomplete insertion + backend resolution/notification are fully wired. Revisit as a Markdown refinement.
+- List header sort is offered only for backend-supported keys (priority/due/assignee); title/status aren't server-sortable.
+
+**Environment note:** this session hit the machine's iCloud "Optimize Mac Storage" eviction (per project memory) hard — `node_modules` reads blocked `pnpm install`, `tsc`, and `vitest` for an extended stretch. Root cause was low free disk (~11 GB); pruning unused Docker build cache/images freed space, iCloud rehydrated, and the toolchain unblocked. If verification hangs at startup again, check free disk first.
 
 ### 2026-05-31 — Phase G1 complete (Auth Screens)
 
