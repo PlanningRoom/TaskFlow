@@ -14,8 +14,8 @@
 **Decision:** Defense in depth:
 
 1. Session cookie is `SameSite=Lax`, `HttpOnly`, `Secure` (Decision 047).
-2. Server issues a `csrf_token` cookie (readable by JavaScript, not `HttpOnly`) on login — 32 random bytes, bound to the session.
-3. Frontend reads the `csrf_token` cookie and echoes its value in an `X-CSRF-Token` header on every POST, PUT, PATCH, and DELETE request.
+2. Server issues a `taskflow_csrf` cookie (readable by JavaScript, not `HttpOnly`) on login — the URL-safe base64 encoding of 32 random bytes stored on the session row (the `sessions.csrf_token` column).
+3. Frontend reads the `taskflow_csrf` cookie and echoes its value in an `X-CSRF-Token` header on every POST, PUT, PATCH, and DELETE request.
 4. Server middleware validates that header value equals the cookie value and matches the active session's CSRF binding. Mismatch → 403.
 5. Safe methods (GET, HEAD, OPTIONS) skip the check.
 

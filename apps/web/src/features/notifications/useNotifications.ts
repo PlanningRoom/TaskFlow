@@ -20,13 +20,14 @@ export function useNotifications() {
   });
 }
 
-/** Unread count for the header bell badge. Polls periodically as a stopgap until
- * the real-time bridge (Phase H1) pushes updates. */
+/** Unread count for the header bell badge. The realtime bridge (Phase H1)
+ * invalidates this on `notification.created`; a slow safety-net poll covers any
+ * missed events (e.g. while the socket is down). */
 export function useUnreadCount() {
   return useApiQuery<UnreadCountResponse>({
     queryKey: UNREAD_COUNT_KEY,
     queryFn: () => apiClient.get<UnreadCountResponse>('/notifications/unread-count'),
-    refetchInterval: 60_000,
+    refetchInterval: 5 * 60_000,
   });
 }
 

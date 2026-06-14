@@ -1,3 +1,4 @@
+import { RealtimeStatusIndicator } from '@/realtime/RealtimeStatusIndicator';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 
@@ -27,6 +28,7 @@ export function AppShell({ breadcrumb, children }: AppShellProps) {
         </div>
         <main className="min-w-0 flex-1 overflow-y-auto bg-bg-app">{children}</main>
       </div>
+      <RealtimeStatusIndicator />
     </div>
   );
 }

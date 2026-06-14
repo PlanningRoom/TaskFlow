@@ -392,16 +392,21 @@ Search parameters are typed. Filter state (`status`, `assignee`, `priority`, `la
 | Auth identity (current user, role) | React Context (populated by a bootstrap query) | 054 |
 | Form state (in-progress edits) | React Hook Form (local to form) | 056 |
 
-The real-time bridge subscribes the client to the `/ws` channel on login and translates inbound events into TanStack Query cache updates:
+The real-time bridge subscribes the client to the `/ws` channel on login and translates inbound events into TanStack Query cache updates. The server envelopes carry **identifiers only**, not full DTOs (see §10.2), so the dispatcher **invalidates** the affected query keys and lets the active query refetch the authoritative row — consistent with the reconcile-from-DB semantics of §10.4. (Precision `setQueryData` updates are a possible future optimisation, gated on the backend emitting full DTOs in the envelope payload.)
 
 ```
-WebSocket event → realtime dispatcher:
-  • { type: 'task.updated', task }   → queryClient.setQueryData(['task', task.id], task)
-                                       + invalidate board queries for the task's project
-  • { type: 'task.created', task }   → invalidate ['project', pid, 'tasks']
-  • { type: 'comment.created', c }   → invalidate ['task', c.task_id, 'comments']
-  • { type: 'notification', n }      → prepend to ['notifications'] + increment badge
-  • { type: 'activity', a }          → prepend to ['activity', scope]
+WebSocket event → realtime dispatcher (invalidate, then refetch):
+  • task.created          → invalidate ['tasks', project_id] + ['dashboard']
+  • task.updated          → invalidate ['task', task_id] + ['tasks', project_id] + ['dashboard']
+  • task.status_changed   → invalidate ['task', task_id] + ['tasks', project_id] + ['dashboard']
+  • comment.created       → invalidate ['task', task_id]  (prefix covers …'comments')
+  • notification.created  → invalidate ['notifications'] (prefix covers …'unread-count');
+                            announce @mentions via the aria-live region (§10.3)
+  • activity              → invalidate ['activity']; map the payload's inner
+                            event_type to the affected lists (projects / labels /
+                            members / invitations / workspace)
+  • control.access_changed → invalidate ['projects'] + ['dashboard'], then send a
+                            { type: 'refresh_subscriptions' } control frame (§10.1)
 ```
 
 Optimistic drag-and-drop (ADR 046) uses TanStack Query's `onMutate`/`onError`/`onSettled` — the card visually moves before the server confirms; on error the card snaps back and a toast explains.
@@ -879,7 +884,7 @@ Dashboard:
    - `user:{user_id}` — notifications for this user.
    - `workspace:{workspace_id}` — workspace-wide activity.
    - For each project the user has access to, `project:{project_id}` — for board and task updates.
-4. On any project-access change (e.g., an admin grants or revokes access), the server sends a control message; the client reconnects to refresh its subscriptions.
+4. On any project-access change (e.g., an admin grants or revokes access), the server publishes a `control.access_changed` event to the affected user. The client responds by sending a `{ type: "refresh_subscriptions" }` control frame, and the server re-enumerates the user's accessible projects and re-subscribes the existing connection in place (no reconnect required).
 
 WebSocket close codes (RFC 6455 application-defined range 4000–4999):
 - `4401` — unauthenticated (no/invalid session).
@@ -912,7 +917,7 @@ Envelope:
 
 ### 10.3 Consumption on the client
 
-See §6.3. Each inbound event runs through a single dispatcher that either calls `queryClient.setQueryData` (precision update) or `queryClient.invalidateQueries` (refetch trigger). Toast notifications are surfaced only for a small whitelist (e.g., incoming `@mention` while the task is not visible).
+See §6.3. Each inbound event runs through a single dispatcher. Because the envelopes carry identifiers only (§10.2), the dispatcher calls `queryClient.invalidateQueries` (refetch trigger) for every event rather than `setQueryData` — the active query refetches the authoritative row. Cross-page screen-reader announcements are surfaced via a polite `aria-live` region for a small whitelist — currently incoming `@mentions` (the badge updates silently for other notification kinds). The richer toast surface lands with the global toast store (Phase H3).
 
 ### 10.4 Delivery semantics
 
@@ -928,7 +933,7 @@ See §6.3. Each inbound event runs through a single dispatcher that either calls
 - Sign-up creates a new workspace and its Owner atomically in one transaction. Passwords are hashed with Argon2id (ADR 048) using parameters `time_cost=3, memory_cost=65536, parallelism=4`.
 - Login verifies the password, creates a `sessions` row, and sets two cookies on the response:
   - `taskflow_session` — session id, `HttpOnly`, `Secure`, `SameSite=Lax`, `Path=/`, 30-day expiry.
-  - `csrf_token` — random token, `Secure`, `SameSite=Lax`, `Path=/`, readable by JS.
+  - `taskflow_csrf` — random token (URL-safe base64 of the session's `csrf_token` bytes), `Secure`, `SameSite=Lax`, `Path=/`, readable by JS.
 - Responses to successful auth mutations include the current user DTO to populate the client cache without a second round trip.
 
 ### 11.2 Session enforcement (ADR 047)
@@ -945,7 +950,7 @@ Every authenticated endpoint depends on `current_session`. Implementation:
 
 For every `POST`, `PUT`, `PATCH`, `DELETE`:
 
-1. Read the `csrf_token` cookie.
+1. Read the `taskflow_csrf` cookie.
 2. Read the `X-CSRF-Token` request header.
 3. Compare byte-for-byte; reject 403 on mismatch.
 4. Further verify the token matches the session row's bound CSRF value.

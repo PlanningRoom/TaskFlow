@@ -3,6 +3,9 @@
   "app.skeletonReady": "Frontend skeleton is ready. Screens land in the next phases.",
   "app.screenComingSoon": "This screen is coming soon.",
   "app.loading": "Loading…",
+  "realtime.reconnecting": "Reconnecting…",
+  "realtime.online": "Back online",
+  "realtime.mentioned": "You were mentioned in a comment",
 
   "auth.field.email": "Email",
   "auth.field.password": "Password",

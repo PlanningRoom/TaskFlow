@@ -8,6 +8,7 @@ import { router } from '@/app/router';
 import { ToastProvider } from '@/components/ui/Toast';
 import { TooltipProvider } from '@/components/ui/Tooltip';
 import { DEFAULT_LOCALE, messagesByLocale } from '@/i18n';
+import { RealtimeProvider } from '@/realtime/RealtimeProvider';
 import './styles/global.css';
 
 const rootElement = document.getElementById('root');
@@ -23,7 +24,9 @@ createRoot(rootElement).render(
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={200}>
           <ToastProvider>
-            <RouterProvider router={router} />
+            <RealtimeProvider>
+              <RouterProvider router={router} />
+            </RealtimeProvider>
           </ToastProvider>
         </TooltipProvider>
       </QueryClientProvider>

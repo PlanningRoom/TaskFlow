@@ -1,4 +1,5 @@
 import type { ApiErrorEnvelope } from '@taskflow/api-types';
+import { CSRF_COOKIE, readCookie } from '@/lib/cookies';
 
 /**
  * Typed, cookie-based fetch client for the TaskFlow API (ADR 042/043/051).
@@ -14,7 +15,6 @@ import type { ApiErrorEnvelope } from '@taskflow/api-types';
  */
 
 const API_BASE = '/api/v1';
-const CSRF_COOKIE = 'taskflow_csrf';
 const CSRF_HEADER = 'X-CSRF-Token';
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -31,16 +31,6 @@ export class ApiError extends Error {
     this.code = code;
     this.fields = fields;
   }
-}
-
-function readCookie(name: string): string | undefined {
-  // document is undefined under SSR/tests without jsdom; guard defensively.
-  if (typeof document === 'undefined') return undefined;
-  for (const part of document.cookie.split(';')) {
-    const [key, ...rest] = part.trim().split('=');
-    if (key === name) return decodeURIComponent(rest.join('='));
-  }
-  return undefined;
 }
 
 export interface RequestOptions {
