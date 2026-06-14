@@ -109,7 +109,8 @@ Watch the full series on YouTube to see the methodology in action.
 | 11 | Build Part 4 | [Watch](https://youtu.be/AHbfAfaLs5k) |
 | 12 | Build Part 5 | [Watch](https://youtu.be/WQ8Iz0s4knw) |
 | 13 | Build Part 6 | [Watch](https://youtu.be/8jIQqb502dk) |
-| 14 | *Coming Soon* |  |
+| 14 | Build Part 7 | [Watch](https://youtu.be/WzzKEX867mM) |
+| 15 | *Coming Soon* |  |
 
 ## Learn More
 
