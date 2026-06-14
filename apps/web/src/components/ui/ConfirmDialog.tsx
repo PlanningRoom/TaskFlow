@@ -1,6 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { Button } from './Button';
-import { Dialog, DialogClose, DialogContent, DialogTrigger } from './Dialog';
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTrigger } from './Dialog';
 
 /**
  * Destructive-confirmation modal (DRD §18.3): a clear consequence message and a
@@ -37,7 +37,9 @@ export function ConfirmDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent title={title}>
-        <div className="text-[13px] leading-relaxed text-text-secondary">{description}</div>
+        <DialogDescription className="text-[13px] leading-relaxed text-text-secondary">
+          {description}
+        </DialogDescription>
         <div className="mt-5 flex justify-end gap-2">
           <DialogClose asChild>
             <Button type="button" variant="ghost">

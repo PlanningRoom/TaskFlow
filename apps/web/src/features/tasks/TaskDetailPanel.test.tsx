@@ -91,4 +91,65 @@ describe('TaskDetailPanel', () => {
     await userEvent.click(getByLabelText('Close task details'));
     expect(onClose).toHaveBeenCalledTimes(2);
   });
+
+  it('commits an edited title', async () => {
+    mockApi();
+    const patch = vi
+      .spyOn(apiClient, 'patch')
+      .mockResolvedValue({ ...taskDetail, title: 'New title' });
+    const user = userEvent.setup();
+    const { findByText, getByRole, getByLabelText } = renderWithProviders(
+      <TaskDetailPanel projectId="p1" taskId="t1" role={OWNER} onClose={vi.fn()} />,
+    );
+    await user.click(await findByText('Fix the login bug'));
+    const input = getByLabelText('Title');
+    await user.clear(input);
+    await user.type(input, 'New title{Enter}');
+    expect(patch).toHaveBeenCalledWith('/tasks/t1', { title: 'New title' });
+    // Title button is back (edit mode exited).
+    expect(getByRole('button', { name: 'New title' })).toBeInTheDocument();
+  });
+
+  it('commits an edited description on blur', async () => {
+    mockApi();
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue(taskDetail);
+    const user = userEvent.setup();
+    const { findByText, getByLabelText } = renderWithProviders(
+      <TaskDetailPanel projectId="p1" taskId="t1" role={OWNER} onClose={vi.fn()} />,
+    );
+    await user.click(await findByText('Read the docs first'));
+    const textarea = getByLabelText('Description');
+    await user.clear(textarea);
+    await user.type(textarea, 'Updated notes');
+    await user.tab(); // blur commits
+    expect(patch).toHaveBeenCalledWith('/tasks/t1', { description: 'Updated notes' });
+  });
+
+  it('changes status via the status select', async () => {
+    mockApi();
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue(taskDetail);
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    const { findByText, getByLabelText, getByRole } = renderWithProviders(
+      <TaskDetailPanel projectId="p1" taskId="t1" role={OWNER} onClose={vi.fn()} />,
+    );
+    await findByText('Fix the login bug');
+    await user.click(getByLabelText('Change status'));
+    await user.click(getByRole('menuitem', { name: 'In Progress' }));
+    expect(patch).toHaveBeenCalledWith('/tasks/t1/status', { status: 'in_progress' });
+  });
+
+  it('posts a comment', async () => {
+    mockApi();
+    const post = vi
+      .spyOn(apiClient, 'post')
+      .mockResolvedValue({ ...comment, id: 'c2', body: 'Nice' });
+    const user = userEvent.setup();
+    const { findByText, getByPlaceholderText, getByRole } = renderWithProviders(
+      <TaskDetailPanel projectId="p1" taskId="t1" role={OWNER} onClose={vi.fn()} />,
+    );
+    await findByText('Fix the login bug');
+    await user.type(getByPlaceholderText('Write a comment… use @ to mention'), 'Nice');
+    await user.click(getByRole('button', { name: 'Comment' }));
+    expect(post).toHaveBeenCalledWith('/tasks/t1/comments', { body: 'Nice' });
+  });
 });

@@ -145,6 +145,32 @@ jobs:
             --cov-report=term-missing \
             --cov-fail-under=85
 
+  web-tests:
+    name: Web tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.17'
+          cache: pnpm
+
+      - name: Install JS deps
+        run: pnpm install --frozen-lockfile || pnpm install
+
+      - name: Vitest + coverage
+        # The 80% gate on components/ + features/ lives in
+        # apps/web/vitest.config.ts; `--coverage` fails the job if any metric
+        # dips below it (Phase H5). Runs well under the 5-minute budget.
+        run: pnpm --filter @taskflow/web test -- --coverage
+
   nginx-config:
     name: nginx -t
     runs-on: ubuntu-latest

@@ -1,3 +1,4 @@
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '@/api/client';
 import type { Invitation, Member } from '@/api/types';
@@ -75,5 +76,23 @@ describe('MembersTab', () => {
     const { findByText, getByRole } = renderWithProviders(<MembersTab />);
     await findByText('Bob');
     expect(getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+  });
+
+  it('changes a member role through the role select', async () => {
+    mockGet();
+    const patch = vi.spyOn(apiClient, 'patch').mockResolvedValue({ ...members[1], role: 'admin' });
+    const user = userEvent.setup();
+    const { findByLabelText } = renderWithProviders(<MembersTab />);
+    await user.selectOptions(await findByLabelText('Role'), 'admin');
+    expect(patch).toHaveBeenCalledWith('/workspaces/me/members/u2', { role: 'admin' });
+  });
+
+  it('resends a pending invitation', async () => {
+    mockGet();
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue({ id: 'i1' });
+    const user = userEvent.setup();
+    const { findByRole } = renderWithProviders(<MembersTab />);
+    await user.click(await findByRole('button', { name: 'Resend' }));
+    expect(post).toHaveBeenCalledWith('/workspaces/me/invitations/i1/resend');
   });
 });
