@@ -9,6 +9,6 @@
 **Decision:** Two approaches based on user type:
 
 - **Owners (new workspace):** The workspace loads normally with contextual prompts in key areas guiding them to create their first project and invite team members. No separate setup wizard.
-- **Invited users (joining an existing workspace):** Users land on the dashboard with a brief welcome message orienting them to the workspace and pointing them to projects they have access to. The message goes away once they have assignments and activity.
+- **Invited users (joining an existing workspace):** Users land on the dashboard with a brief welcome message orienting them to the workspace and pointing them to projects they have access to. The message goes away once they start participating — implemented as "once they have at least one assigned task" (the activity feed isn't actor-filtered on the client, so assignments are the user-attributable signal; reconciled 2026-06-14, see DRD §16 / PRD §3.4).
 
 **Rationale:** Contextual prompts are lighter to build than a wizard and naturally integrate with the normal UI — no separate onboarding flow to maintain. They guide without constraining, letting users complete setup steps in whatever order makes sense. For invited users, a welcome message on the dashboard provides orientation without over-engineering the experience. Both approaches tie directly into the empty states design, keeping the onboarding experience and the everyday UI as the same code.

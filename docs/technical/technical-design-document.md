@@ -388,7 +388,8 @@ Search parameters are typed. Filter state (`status`, `assignee`, `priority`, `la
 |-----------|-------|-----|
 | Server state (queries / mutations) | TanStack Query | 053 |
 | URL state (filters, panel, view) | TanStack Router | 055 |
-| Global UI (toasts, command menu) | Zustand | 054 |
+| Global UI — toasts | React Context (`ToastProvider` + `useToast`) | 054 |
+| Global UI — command menu (future) | Zustand (reserved; not yet built) | 054 |
 | Auth identity (current user, role) | React Context (populated by a bootstrap query) | 054 |
 | Form state (in-progress edits) | React Hook Form (local to form) | 056 |
 
@@ -917,7 +918,7 @@ Envelope:
 
 ### 10.3 Consumption on the client
 
-See §6.3. Each inbound event runs through a single dispatcher. Because the envelopes carry identifiers only (§10.2), the dispatcher calls `queryClient.invalidateQueries` (refetch trigger) for every event rather than `setQueryData` — the active query refetches the authoritative row. Cross-page screen-reader announcements are surfaced via a polite `aria-live` region for a small whitelist — currently incoming `@mentions` (the badge updates silently for other notification kinds). The richer toast surface lands with the global toast store (Phase H3).
+See §6.3. Each inbound event runs through a single dispatcher. Because the envelopes carry identifiers only (§10.2), the dispatcher calls `queryClient.invalidateQueries` (refetch trigger) for every event rather than `setQueryData` — the active query refetches the authoritative row. Cross-page screen-reader announcements are surfaced via a polite `aria-live` region for a small whitelist — currently incoming `@mentions` (the badge updates silently for other notification kinds). The toast surface (a React Context store — **not** Zustand; see the §6.3 state table and the ADR 054 amendment) lands in Phase H3.
 
 ### 10.4 Delivery semantics
 

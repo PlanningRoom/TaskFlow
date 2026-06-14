@@ -4,31 +4,33 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { MyTasksSection } from './MyTasksSection';
 import { ProjectsSection } from './ProjectsSection';
 import { RecentActivitySection } from './RecentActivitySection';
-import { useDashboardActivity, useMyTasks } from './useDashboard';
+import { useMyTasks } from './useDashboard';
 
 /**
  * Dashboard screen (DRD §8.3 / PRD §13). Two-column 60/40 grid (stacks below
- * `lg`): My Tasks on the left; Recent Activity over Projects on the right. An
- * invited user with no tasks or activity yet sees a brief welcome (PRD §3.4);
- * the Owner's first-run "create a project" prompt lives in the Projects panel.
+ * `lg`): My Tasks on the left; Recent Activity over Projects on the right. A
+ * newly-invited user with no assigned tasks yet sees a brief, workspace-named
+ * welcome (PRD §3.4); the Owner's first-run "create a project" prompt lives in
+ * the Projects panel.
+ *
+ * Dismissal is keyed on the user's **own** assignments (`my-tasks`), which is the
+ * only user-attributable signal available on the client — the workspace activity
+ * feed isn't actor-filtered, so using it would hide the welcome the moment an
+ * invited user joins an already-active workspace. See PRD §3.4 / DRD §16.
  */
 export function DashboardScreen() {
   const intl = useIntl();
   const { data: user } = useCurrentUser();
   const { data: workspace } = useWorkspace();
   const myTasks = useMyTasks();
-  const activity = useDashboardActivity();
 
   const hasTasks = (myTasks.data?.groups ?? []).some((g) => g.tasks.length > 0);
-  const hasActivity = (activity.data?.events ?? []).length > 0;
   const showWelcome =
     user !== undefined &&
     user.role !== 'owner' &&
     !!workspace?.name &&
     !myTasks.isPending &&
-    !activity.isPending &&
-    !hasTasks &&
-    !hasActivity;
+    !hasTasks;
 
   return (
     <div className="p-6">

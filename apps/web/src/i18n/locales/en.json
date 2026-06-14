@@ -10,6 +10,7 @@
   "errors.mutation": "Couldn't save your changes. Please try again.",
 
   "sidebar.inviteTeam": "Invite team members",
+  "userMenu.signOut": "Sign out",
 
   "auth.field.email": "Email",
   "auth.field.password": "Password",

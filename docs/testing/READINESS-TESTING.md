@@ -130,6 +130,7 @@ Test these while logged in as **Owner** (log in first via §6 if needed).
 | 5.1 | Shell renders | Log in, observe layout | Sidebar (240px, left) + header (52px, top) + content area | [ ] |
 | 5.2 | Sidebar nav | Inspect sidebar | Logo block; Dashboard + Notifications links; Projects section; bottom Settings link + user identity block | [ ] |
 | 5.3 | Header | Inspect header | Breadcrumb, search input (⌘K hint), notification bell, user avatar | [ ] |
+| 5.3b | User menu | Click the header avatar | A dropdown opens (DRD §11.2): display name, email, role badge, **Settings** link, **Sign out** action | [ ] |
 | 5.4 | Active nav state | Click Dashboard, then Notifications | The current route's nav item is visually highlighted | [ ] |
 | 5.5 | Breadcrumb updates | Navigate between routes | Breadcrumb reflects current route | [ ] |
 | 5.6 | Bare project URL redirect | Visit `/projects/<any-id>` directly | Redirects to `…/board` (or your last-used view for that project) | [ ] |

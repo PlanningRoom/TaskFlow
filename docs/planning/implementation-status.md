@@ -417,15 +417,15 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 #### Phase H2 — Empty States and First-Run `[x] Complete`
 - [x] Audit all screens vs DRD §16 table — copy reconciled; most empty states already shipped in Part G (board/list filter vs no-tasks, search, notifications, dashboard sections)
 - [x] Owner first-run: "Create your first project" prompt on dashboard (already in `ProjectsSection`, reuses Create Project modal from G2)
-- [x] Owner first-run: "Invite team members" prompt in sidebar (`Sidebar.tsx` `InviteTeamPrompt`, reuses `InviteMemberModal`; auto-hides once ≥1 invitation exists)
-- [x] Invited-user first-run: welcome on dashboard, now names the workspace (`dashboard.welcome.title` = "Welcome to {workspaceName}.", sourced from `useWorkspace`)
+- [x] Owner first-run: "Invite team members" prompt in sidebar (`Sidebar.tsx` `InviteTeamPrompt`, reuses `InviteMemberModal`; **Owner-only** per PRD §3.4; auto-hides once ≥1 invitation exists)
+- [x] Invited-user first-run: workspace-named welcome on dashboard (`dashboard.welcome.title` = "Welcome to {workspaceName}.", sourced from `useWorkspace`); dismissed once the user has an **assigned task** (their own `my-tasks` signal — reconciled with DRD §16, which was updated)
 - [x] My Tasks empty state gains a "Browse projects" CTA (links to the first accessible project board)
 - [x] Visibility derived from workspace state (no backend flag)
 - [x] Role-aware copy & CTAs verified (Viewer sees message without CTA)
 - [x] Component tests assert each state (`DashboardScreen`, `Sidebar` prompt, board/list empty states)
 
 #### Phase H3 — Toasts, Errors, Confirmations `[x] Complete`
-- [x] `useToast` hook + toast styling per DRD §7.8/§18.2 (5s auto-dismiss, fade-up, reduced motion, success/error variants, manual dismiss) — **kept Context-based, did NOT migrate to Zustand** (see H3 note)
+- [x] `useToast` hook + toast styling per DRD §7.8/§18.2 (5s auto-dismiss, fade-up, reduced motion, success/error variants, manual dismiss) — **kept Context-based, did NOT migrate to Zustand**; reconciled in the [ADR 054 amendment](../technical/decisions/054-client-state-management.md) + TDD §6.3 (see H3 note)
 - [x] Standardized mutation-error toast — global `MutationCache.onError` → `errors.mutation` copy via the `mutationErrorToast` bridge; **opt-in** per mutation with `meta: { errorToast: true }` (not opt-out) so inline-error forms don't double-toast (see H3 note). Tagged: status change, change role, remove member, delete label, resend invitation.
 - [x] Destructive confirmation modal pattern (Remove member, Delete account, Delete label) — `ConfirmDialog` already covers member/label with exact DRD copy; account keeps its password dialog. `ConfirmDialog` now wires `aria-describedby` (H4).
 - [x] Component tests (`Toast`, `ConfirmDialog`, global error toast)
@@ -434,10 +434,10 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 - [x] ARIA on modals, dropdowns, icon buttons, live regions — strong Radix-based baseline confirmed; fixed `ConfirmDialog` missing `aria-describedby`; verified `aria-expanded` (Radix), `aria-pressed` toggles, icon-button labels, landmarks
 - [x] `vitest-axe` assertions added to all new component tests (color-contrast disabled in jsdom per `test/axe.ts`)
 - [x] Reduced motion verified (global rule in `styles/global.css`; toast/panel/modal honor it)
-- [~] Keyboard sweep + color-contrast spot-checks + **manual VoiceOver pass** — **deferred to `apps/web/docs/a11y-manual-checklist.md`** (not runnable headless; same runtime-verification caveat as prior frontend phases). Includes the live two-browser realtime check carried over from H1.
+- [~] Keyboard sweep + color-contrast spot-checks + **manual VoiceOver pass** — **deferred to `apps/web/docs/a11y-manual-checklist.md`** (not runnable headless; same runtime-verification caveat as prior frontend phases). Includes the live two-browser realtime check carried over from H1. The plan H4 DoD item "keyboard-only journey for the E2E happy-path completes" is delivered by the **I1 Playwright** keyboard-nav journeys, not in this phase.
 
 #### Phase H5 — Frontend Test Completion `[x] Complete`
-- [x] Component tests for the untested domain components (Header, AppShell, Tooltip, TaskCard, ProjectView, ProjectSubNav, ProjectSettingsModal, CreateTaskModal, LabelModal, TaskFields) + expanded TaskDetailPanel/MembersTab interactions
+- [x] Component tests for the untested domain components (Header, AppShell, Tooltip, TaskCard, ProjectView, ProjectSubNav, ProjectSettingsModal, CreateTaskModal, LabelModal, TaskFields) + expanded TaskDetailPanel/MembersTab interactions. (A few thin sub-components — e.g. `Markdown`, the dashboard section wrappers — are covered transitively via their parent-screen tests rather than dedicated files; the ≥80% coverage gate is the measurable floor for the plan's "every domain component" intent.)
 - [x] Hook/pure-logic tests for `taskQueryState` (validate/searchToParams/hasActiveFilters); permission derivations exercised via component tests
 - [x] `vitest-axe` on component tests
 - [x] Coverage ≥80% on `components/` + `features/` — **statements 94.3%, lines 94.3%, branches 82.2%, functions 82.1%** (gate set in `vitest.config.ts`; 182 web tests)
@@ -528,15 +528,21 @@ Use this section as a running log of decisions, blockers, or context that should
 
 The remaining Part H cross-cutting phases landed on branch `feat/part-h-cross-cutting`. Much of H2/H3 already existed in partial form from Part G, so this was largely audit, gap-fill, standardize, and test. **vitest 182/182 green** (44 files; +48 tests over H1's 134), `tsc -b` + `biome check` clean.
 
-**H2 — Empty states & first-run:** the DRD §16 empty states were mostly shipped in Part G; copy was reconciled. Net-new: the Owner "Invite team members" sidebar prompt (`Sidebar.tsx` `InviteTeamPrompt`, reuses `InviteMemberModal`, auto-hides once an invitation exists, gated on Owner/Admin); the invited-user welcome now names the workspace (`dashboard.welcome.title` → "Welcome to {workspaceName}." via `useWorkspace`); and a "Browse projects" CTA on the My Tasks empty state.
+**H2 — Empty states & first-run:** the DRD §16 empty states were mostly shipped in Part G; copy was reconciled. Net-new: the Owner "Invite team members" sidebar prompt (`Sidebar.tsx` `InviteTeamPrompt`, reuses `InviteMemberModal`, **Owner-only** per PRD §3.4, auto-hides once an invitation exists); the invited-user welcome now names the workspace (`dashboard.welcome.title` → "Welcome to {workspaceName}." via `useWorkspace`) and is dismissed by the user's own `my-tasks` signal (DRD §16 updated to match); and a "Browse projects" CTA on the My Tasks empty state.
 
 **H3 — Toasts/errors/confirmations — two intentional deviations from the plan doc:**
-1. **Toast kept Context-based, NOT migrated to Zustand.** A working Radix-backed `useToast()` already existed and was used in 8 places; the plan's "Zustand store" wording was a means, not a requirement. Extended it with the error variant + manual dismiss (DRD §18.2) instead of a churny rewrite. No new dependency.
+1. **Toast kept Context-based, NOT migrated to Zustand.** A working Radix-backed `useToast()` already existed and was used in 8 places; the plan's "Zustand store" wording was a means, not a requirement. Extended it with the error variant + manual dismiss (DRD §18.2) instead of a churny rewrite. No new dependency. **Reconciled across the architecture-of-record** (2026-06-14 audit): ADR 054 now carries an amendment, TDD §6.3/§7.2 describe the Context store, and plan H3 was updated — so the docs no longer mandate Zustand for toasts.
 2. **Mutation-error toast is opt-IN, not opt-out.** The plan imagined a global toast for every unhandled mutation error with a `skipErrorToast` opt-out. But ~12 call sites (auth screens, form modals) already show contextual inline errors, so an opt-out default would double-toast all of them. Inverted to opt-in: a global `MutationCache.onError` (`app/query-client.ts`) fires the standardized `errors.mutation` toast only for mutations tagged `meta: { errorToast: true }` (status change, change role, remove member, delete label, resend invitation — the ones that previously failed silently). Bridged module→context via `lib/mutationErrorToast.ts` + `app/MutationErrorListener.tsx`. Destructive confirmations already matched DRD copy via `ConfirmDialog`.
 
 **H4 — Accessibility:** the Radix-based baseline was already strong (focus traps, `aria-expanded`, `aria-pressed`, labels, landmarks, global reduced-motion). Concrete fix: `ConfirmDialog` now wires `aria-describedby` via `DialogDescription`. `vitest-axe` runs on every new component test. The manual passes that can't run headless — keyboard sweep, VoiceOver, color-contrast spot-checks, and the live two-browser realtime check carried from H1 — are documented as a standing pre-launch checklist at **`apps/web/docs/a11y-manual-checklist.md`** and marked `[~]` deferred.
 
 **H5 — Test completion:** added tests for the previously-untested components (Header, AppShell, Tooltip, TaskCard, ProjectView, ProjectSubNav, ProjectSettingsModal, CreateTaskModal, LabelModal, TaskFields) plus a `taskQueryState` pure-logic suite and expanded TaskDetailPanel/MembersTab interactions. Coverage gate added in `vitest.config.ts` (80% on `components/` + `features/`); actuals **statements/lines 94.3%, branches 82.2%, functions 82.1%**. New `web-tests` CI job runs `pnpm --filter @taskflow/web test -- --coverage` (~23s, well under the 5-min budget). Test-infra note: added a jsdom pointer-capture shim in `test/setup.ts` for Radix interactions.
+
+**Post-audit reconciliation (2026-06-14):** a code-vs-docs audit of Part H surfaced several inconsistencies, all now fixed:
+- **Logout / user menu built (was missing).** The header avatar was a non-functional `aria-label="User menu"` placeholder and there was **no way to sign out** anywhere in the app, despite DRD §11.2, plan F4, and the readiness plan all assuming it. Implemented the DRD §11.2 User Menu (identity block: name/email/role badge, Settings link, Sign out) on the header avatar via the `DropdownMenu` primitive, backed by a new `features/auth/useLogout.ts` (`POST /auth/logout` → clear cache → `/login`). This closes a latent **F4** gap. (`Header.tsx`, +2 tests.)
+- **Invite-team prompt narrowed to Owner-only** to match PRD §3.4 / plan H2 (was Owner/Admin).
+- **Invited-welcome dismissal made user-attributable** (own `my-tasks`, not the workspace-wide activity feed), fixing a latent bug where an invited user joining an already-active workspace would never see the welcome. DRD §16 and plan H2 reconciled to the implemented signal.
+- **Doc staleness fixed:** plan H1 `setQueryData` → invalidate (matches TDD §6.3 + code); plan H3 + TDD §6.3/§7.2 + ADR 054 amendment now describe the Context toast store.
 
 **Carried forward (unchanged):** responsive/mobile polish (F4/G3/G4 deferral); @mention chip rendering in posted comments; the manual a11y + two-browser checks above.
 

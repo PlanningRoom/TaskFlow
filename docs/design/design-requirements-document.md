@@ -827,7 +827,7 @@ All empty states follow the tone and voice guide — calm, directional, role-awa
 
 **First-run prompts:**
 - **Owner (new workspace):** Contextual prompts integrated into the standard UI (not a wizard): "Create your first project" on the dashboard, "Invite team members" in sidebar/settings. Prompts disappear once the action is completed.
-- **Invited user:** Brief welcome message on the dashboard: "Welcome to [Workspace Name]." Disappears once the user has assignments and activity.
+- **Invited user:** Brief welcome message on the dashboard: "Welcome to [Workspace Name]." Disappears once the user has at least one assigned task. (Implementation note: dismissal keys off the user's own assignments — the only user-attributable signal on the client; the workspace activity feed isn't actor-filtered, so it isn't used here.)
 
 ---
 

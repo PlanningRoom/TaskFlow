@@ -104,7 +104,7 @@ Permissions operate on two layers:
 
 **Joining a workspace (Invited user):**
 - The user lands on the dashboard with a brief welcome message orienting them to the workspace.
-- The welcome message disappears once the user has assignments and activity.
+- The welcome message disappears once the user starts participating — in the implementation, once they have at least one assigned task. (The activity feed isn't actor-filtered on the client, so "has an assigned task" is the user-attributable signal used; see DRD §16 and ADR-003.)
 
 ### 3.5 Empty States
 

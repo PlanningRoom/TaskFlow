@@ -798,7 +798,7 @@ Each Part G phase reads: build the screen with full state coverage (loading / er
 **Tasks:**
 - Connect to `wss://{host}/ws` after `/auth/me` resolves; carry CSRF token as query param.
 - Single `realtimeDispatcher` translating inbound envelopes:
-  - `task.updated` → `setQueryData(['task', id], task)` + invalidate board queries for project.
+  - `task.updated` → invalidate `['task', id]` + the board queries for the project. (The shipped envelopes carry **identifiers only**, not full DTOs, so the dispatcher invalidates and lets the active query refetch rather than `setQueryData` — see TDD §6.3 and the H1 note in `implementation-status.md`.)
   - `task.created` → invalidate `['project', pid, 'tasks']`.
   - `comment.created` → invalidate `['task', taskId, 'comments']`.
   - `notification` → prepend to `['notifications']` + bump badge.
@@ -824,7 +824,7 @@ Each Part G phase reads: build the screen with full state coverage (loading / er
 - Implement first-run prompts (PRD §3.4 / DRD §16):
   - Owner — "Create your first project" prompt on the dashboard while the workspace has zero projects (uses the Create Project modal from Phase G2).
   - Owner — "Invite team members" prompt in the sidebar/settings until at least one invitation has been sent (uses the Invite Member modal from Phase G8).
-  - Invited user — brief welcome message on the dashboard until the user has at least one assignment or one activity entry attributable to them.
+  - Invited user — brief, workspace-named welcome on the dashboard until the user has at least one **assigned task** (their own `my-tasks` signal — the only user-attributable one on the client; the workspace activity feed isn't actor-filtered, so it's not used for dismissal). Reconciled with DRD §16.
 - Visibility derived from current workspace state on the client; no backend "first-run" flag required.
 - Confirm role-aware copy and CTAs.
 
@@ -841,7 +841,7 @@ Each Part G phase reads: build the screen with full state coverage (loading / er
 **Goal:** Global toast system and destructive confirmation pattern in place per DRD §7.8 / §18.
 
 **Tasks:**
-- Global Zustand store for toasts; `useToast` hook (TDD §6.3).
+- Context-based toast store; `useToast` hook (TDD §6.3 / ADR 054 amendment). (Originally specced as a Zustand store; the existing React Context toast was retained — see the H3 note in `implementation-status.md`.)
 - Toast styling per DRD §7.8 (bottom-right, 5s auto-dismiss, success icon, fade up, reduced motion).
 - Mutation error handler standardizes "Couldn't save your changes. Please try again." style copy where appropriate.
 - Destructive confirmation modal pattern (DRD §18.3) used for: Remove member, Delete account, Delete label.

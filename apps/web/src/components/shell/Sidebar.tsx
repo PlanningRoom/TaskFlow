@@ -1,6 +1,5 @@
 import { Link } from '@tanstack/react-router';
 import { useIntl } from 'react-intl';
-import type { CurrentUser } from '@/api/types';
 import { Avatar } from '@/components/ui/Avatar';
 import { Bell, LayoutGrid, Plus, Settings, UserPlus } from '@/components/ui/icons';
 import { CreateProjectModal } from '@/features/dashboard/CreateProjectModal';
@@ -11,11 +10,6 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { useProjects } from '@/hooks/useProjects';
 import { cn } from '@/lib/cn';
 import { Logo } from './Logo';
-
-/** Owner/Admin can send invitations (PRD §3.3). */
-function canManageMembers(role: CurrentUser['role']): boolean {
-  return role === 'owner' || role === 'admin';
-}
 
 /**
  * Sidebar (DRD §6.3). 240px column: logo, primary nav (Dashboard,
@@ -94,7 +88,7 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
         </div>
       )}
 
-      {!collapsed && user && canManageMembers(user.role) ? <InviteTeamPrompt /> : null}
+      {!collapsed && user?.role === 'owner' ? <InviteTeamPrompt /> : null}
 
       <div className={cn('mt-auto border-t border-border-sidebar p-2', collapsed && 'px-1')}>
         <Link to="/settings/workspace" className={linkClass} title="Settings">
@@ -125,10 +119,11 @@ export function Sidebar({ collapsed = false }: { collapsed?: boolean }) {
 }
 
 /**
- * Owner/Admin first-run prompt (PRD §3.4 / DRD §16): "Invite team members",
- * shown in the sidebar until at least one invitation has been sent. Visibility
- * is derived from workspace state — it disappears once `invitations` is
- * non-empty, with no backend first-run flag.
+ * Owner first-run prompt (PRD §3.4 / DRD §16): "Invite team members", shown in
+ * the sidebar until at least one invitation has been sent. Owner-only per the
+ * "new workspace (Owner)" framing in PRD §3.4. Visibility is derived from
+ * workspace state — it disappears once `invitations` is non-empty, with no
+ * backend first-run flag.
  */
 function InviteTeamPrompt() {
   const intl = useIntl();

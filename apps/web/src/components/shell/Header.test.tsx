@@ -1,16 +1,19 @@
+import { waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '@/api/client';
 import { axe } from '@/test/axe';
 import { renderWithProviders } from '@/test/render';
 import { Header } from './Header';
 
+const navigate = vi.fn();
 vi.mock('@tanstack/react-router', () => ({
   Link: ({ to, children, ...props }: { to: string; children: React.ReactNode }) => (
     <a href={to} {...props}>
       {children}
     </a>
   ),
-  useNavigate: () => vi.fn(),
+  useNavigate: () => navigate,
 }));
 
 const user = {
@@ -31,7 +34,10 @@ function mockApi(unread: number) {
   }) as typeof apiClient.get);
 }
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => {
+  vi.restoreAllMocks();
+  navigate.mockClear();
+});
 
 describe('Header', () => {
   it('renders breadcrumb segments with the last marked current', () => {
@@ -65,5 +71,33 @@ describe('Header', () => {
     );
     await findByLabelText('User menu');
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('opens the user menu showing identity, and signs out (DRD §11.2)', async () => {
+    mockApi(0);
+    const post = vi.spyOn(apiClient, 'post').mockResolvedValue({ ok: true });
+    const u = userEvent.setup({ pointerEventsCheck: 0 });
+    const { findByLabelText, getByRole, getByText } = renderWithProviders(
+      <Header breadcrumb={['Dashboard']} />,
+    );
+    await u.click(await findByLabelText('User menu'));
+    // Identity block: name, email, role badge.
+    expect(getByText('olivia@aurora.example.com')).toBeInTheDocument();
+    expect(getByText('Owner')).toBeInTheDocument();
+
+    await u.click(getByRole('menuitem', { name: 'Sign out' }));
+    expect(post).toHaveBeenCalledWith('/auth/logout');
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith({ to: '/login' }));
+  });
+
+  it('navigates to settings from the user menu', async () => {
+    mockApi(0);
+    const u = userEvent.setup({ pointerEventsCheck: 0 });
+    const { findByLabelText, getByRole } = renderWithProviders(
+      <Header breadcrumb={['Dashboard']} />,
+    );
+    await u.click(await findByLabelText('User menu'));
+    await u.click(getByRole('menuitem', { name: 'Settings' }));
+    expect(navigate).toHaveBeenCalledWith({ to: '/settings/profile' });
   });
 });
