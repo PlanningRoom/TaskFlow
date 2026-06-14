@@ -1,15 +1,15 @@
-# TaskFlow — Readiness Test Plan (through Phase G8 — Part G complete)
+# TaskFlow — Readiness Test Plan (through Phase H5 — Part H complete)
 
-**Version:** 3.0
-**Date:** 2026-06-07
-**Scope:** Manual UI testing of everything built **through Phase G8** — all of Part G (Frontend Screens).
+**Version:** 4.0
+**Date:** 2026-06-14
+**Scope:** Manual UI testing of everything built **through Phase H5** — all of Part G (Frontend Screens) plus Part H (Cross-Cutting: real-time, empty states/first-run, toasts/errors, accessibility, test completion).
 **Audience:** Whoever is clicking through the running app to confirm it behaves.
 
 ---
 
 ## 1. What this covers
 
-Part G is complete: every screen behind the shell is now real, backend-wired UI — not a placeholder. You can authenticate (G1), land on a real dashboard (G2), open a project's **board** and **list** views (G3/G4), open the **task detail panel** to edit properties and comment (G5), read **notifications** (G6), use global **search** (G7), and manage **settings** (G8).
+Parts G **and H** are complete: every screen behind the shell is real, backend-wired UI, and the cross-cutting layer is in place. You can authenticate (G1), land on a real dashboard (G2), open a project's **board** and **list** views (G3/G4), open the **task detail panel** to edit properties and comment (G5), read **notifications** (G6), use global **search** (G7), and manage **settings** (G8). On top of that, changes now **stream live across tabs and users** (H1), every async action gives **toast feedback** with standardized error messaging (H3), and **first-run prompts/empty states** are complete and role-aware (H2).
 
 This plan tests, in order:
 
@@ -22,20 +22,21 @@ This plan tests, in order:
 7. **Notifications (G6)** — list, mark-as-read, header bell badge.
 8. **Search (G7)** — ⌘K overlay, ranked results, keyboard navigation.
 9. **Settings (G8)** — Workspace, Members, Labels, Profile, with role-gated access.
+10. **Real-time (H1)** — live cross-tab/user updates for boards, tasks, comments, notifications, activity (new §19).
 
-### What's new since v2.0 (G2)
+### What's new since v3.0 (G8)
 
-- The board, list, task panel, notifications, search, and all four settings tabs are **functional** (new §13–§18). They were placeholders in v2.0.
-- The header **search box** and **notification bell** are now wired (the bell shows a live unread count; the search opens a results dropdown).
-- The sidebar `+` and project rows open real screens/modals.
+- **Real-time updates (H1) are live.** Boards, the task panel, notifications, and activity update **without a refresh** when something changes in another tab or by another user. A discreet "Reconnecting…" pill shows if the socket drops. The "refresh to see changes" caveats from v3.0 are **gone** — see new §19.
+- **Toasts & error feedback (H3).** Success toasts confirm saves; a **standardized error toast** ("Couldn't save your changes. Please try again.") now appears when an action fails (e.g. a drag-and-drop whose save is rejected, a role change, a remove/delete). Toasts auto-dismiss after ~5s and can be **manually dismissed** (× on the toast).
+- **First-run & empty states (H2).** The Owner now also sees an **"Invite team members"** prompt in the sidebar until the first invitation is sent; the invited-user welcome **names the workspace** ("Welcome to Aurora Studio."); the empty **My Tasks** state offers a "Browse projects" link.
+- **Accessibility (H4)** has had an automated `vitest-axe` pass across components; a manual VoiceOver/contrast checklist lives at `apps/web/docs/a11y-manual-checklist.md`.
 
 ### Out of scope (not built yet — don't file these as bugs)
 
-- **Real-time updates** (WebSocket bridge is Phase H1). Nothing live-updates across tabs/users — **refresh** to see changes made elsewhere. The board's *own* drag-and-drop updates optimistically within the same tab.
-- **Global toast system** (Phase H3) — a minimal toast exists; the richer store is later.
 - **Responsive/mobile polish** — tablet icon-rail, mobile hamburger, board column stacking, and list mobile layout are **deferred** (DRD §15 / F4 note). Below `md` the sidebar is hidden; wide screens are the test target.
 - **@mention rendering** — posted comments show the raw `@handle` text rather than a teal-styled chip; autocomplete insertion and backend resolution/notification *are* wired. (Tracked refinement.)
 - **List header sort** is offered only for backend-supported keys (priority / due / assignee); **Title and Status columns are not click-to-sort**.
+- **Manual accessibility passes** — keyboard sweep, screen-reader (VoiceOver), and color-contrast spot-checks are the standing pre-launch checklist (`apps/web/docs/a11y-manual-checklist.md`); §20 here is the lightweight version, not the full WCAG audit.
 
 > If something matches a deferred item above, note it under "Observations," not "Defects."
 
@@ -253,7 +254,7 @@ curl -s -b /tmp/tf-cookies.txt -X POST http://localhost:8000/api/v1/workspaces/m
 
 The dashboard is the landing screen after login at `/dashboard`. It has three sections — **My Tasks**, **Recent Activity**, **Projects** — plus role-aware empty states, first-run prompts, and the Create Project modal.
 
-> **Reminder:** no real-time yet (Phase H1). After creating data, **refresh** to see the dashboard change.
+> **Real-time (H1) is on:** activity and dashboard data update live when changes happen elsewhere. If a panel ever looks stale, a refresh should never be *required* — note it as a defect if it is. Dedicated cross-tab real-time tests are in §19.
 
 ### 12.1 Layout & loading
 
@@ -274,7 +275,7 @@ The dashboard is the landing screen after login at `/dashboard`. It has three se
 | 12.2.2 | Task row content | Inspect a task row | Shows priority icon, title, status badge, and due date (per DRD §8.3) | [ ] |
 | 12.2.3 | Ordering | Scan the order within/across groups | Overdue and soonest-due first; tasks with **no due date last** (overdue rows visually flagged) | [ ] |
 | 12.2.4 | Done/cancelled excluded | Compare against the board later | Completed and cancelled tasks do **not** appear in My Tasks | [ ] |
-| 12.2.5 | Empty for non-assignees | Log in as Owner (or Viewer) | My Tasks shows a friendly empty state, not an error or blank box (DRD §16) | [ ] |
+| 12.2.5 | Empty for non-assignees | Log in as Owner (or Viewer) | My Tasks shows a friendly empty state (DRD §16); when the user has accessible projects, a **"Browse projects"** link is offered (H2) | [ ] |
 | 12.2.6 | Task link target | Click a task | Opens the **task detail panel** over that project's view (G5 — see §15) | [ ] |
 
 ### 12.3 Recent Activity section (PRD §13.2)
@@ -305,11 +306,12 @@ Use the **fresh workspace** you created in §7.2 (zero projects, no activity, no
 
 | # | Test | Steps | Expected | ✓ |
 |---|------|-------|----------|---|
-| 12.5.1 | Owner first-run | Log in as the fresh-signup Owner | Dashboard shows an Owner first-run state — a "Create your first project" prompt/CTA (DRD §16) | [ ] |
+| 12.5.1 | Owner first-run (project) | Log in as the fresh-signup Owner | Dashboard shows an Owner first-run state — a "Create your first project" prompt/CTA (DRD §16) | [ ] |
 | 12.5.2 | No projects empty state | Look at the Projects section on the fresh workspace | A "No projects yet" empty state with a create CTA, not a blank column | [ ] |
 | 12.5.3 | Empty My Tasks | Same fresh workspace | My Tasks shows its empty state | [ ] |
 | 12.5.4 | Role-aware copy | Compare Owner (fresh) vs a non-owner empty view | Copy/CTA differs by capability — only roles that can create projects see the create CTA | [ ] |
-| 12.5.5 | Invited-user welcome | (Optional) Accept an invite (§10.2) into Aurora as a brand-new member with no assignments | A brief welcome message shows until the user has an assignment/activity (per PRD §3.4) — note actual | [ ] |
+| 12.5.5 | Owner first-run (invite) **(H2)** | On the fresh workspace, look at the **sidebar** (bottom, near Settings) | An **"Invite team members"** prompt is shown (it opens the Invite Member modal). It **disappears once the first invitation is sent** | [ ] |
+| 12.5.6 | Invited-user welcome **(H2)** | (Optional) Accept an invite (§10.2) into Aurora as a brand-new member with no assignments | A welcome message that **names the workspace** ("Welcome to Aurora Studio.") shows until the user has an assignment/activity (PRD §3.4) | [ ] |
 
 ### 12.6 Create Project modal (DRD §10.1)
 
@@ -320,7 +322,7 @@ Reachable from three triggers — verify each opens the **same** modal.
 | 12.6.1 | Open from sidebar `+` | As Owner, click the `+` in the sidebar Projects section | Create Project modal opens (name + optional description per DRD §10.1) | [ ] |
 | 12.6.2 | Open from empty state | On the fresh workspace, click the dashboard "No projects yet" / first-run CTA | The same Create Project modal opens | [ ] |
 | 12.6.3 | Validation | Submit with an empty name | Inline validation; submit blocked | [ ] |
-| 12.6.4 | Happy path | Enter a name, submit | Project is created; modal closes; toast; you navigate to the new project's board; it appears in the sidebar list and dashboard Projects (refresh if needed) | [ ] |
+| 12.6.4 | Happy path | Enter a name, submit | Project is created; modal closes; success toast; you navigate to the new project's board; it appears in the sidebar list and dashboard Projects without a refresh | [ ] |
 | 12.6.5 | Dismiss | Open the modal, press Esc / click backdrop / Cancel | Modal closes without creating a project | [ ] |
 | 12.6.6 | Role gating | Log in as **viewer**, look for create entry points | Viewer does **not** get a create-project CTA or sidebar `+` (PRD §5.1 — create is Owner/Admin/Member) | [ ] |
 | 12.6.7 | First-run clears | After creating the first project on the fresh workspace | The Owner "create your first project" first-run prompt no longer shows | [ ] |
@@ -351,7 +353,7 @@ Open a project's board: log in as **dev1**, click **Mobile App Redesign** (riche
 | 13.2.2 | Persists | Refresh the page | The card is still in its new column (the change was saved) | [ ] |
 | 13.2.3 | Counts update | Watch the column counts after a move | Source count −1, destination count +1 | [ ] |
 | 13.2.4 | Viewer cannot drag | Log in as **viewer**, open Mobile App Redesign, try dragging a card | Cards don't drag / no status change (read-only) | [ ] |
-| 13.2.5 | Rollback on failure *(optional)* | DevTools → block `PATCH /tasks/*/status`, then drag | Card snaps back to the original column with an error indication (no silent loss) | [ ] |
+| 13.2.5 | Rollback on failure *(optional)* | DevTools → block `PATCH /tasks/*/status`, then drag | Card snaps back to the original column **and an error toast** appears ("Couldn't save your changes. Please try again." — H3); no silent loss | [ ] |
 
 ### 13.3 Filters & sort
 
@@ -373,7 +375,7 @@ Open a project's board: log in as **dev1**, click **Mobile App Redesign** (riche
 |---|------|-------|----------|---|
 | 13.4.1 | Open Create Task | As dev1, click **Create task** | Modal with Title (required), Description, Assignee, Priority, Due date, Labels | [ ] |
 | 13.4.2 | Validation | Submit with empty title | Inline validation; submit blocked | [ ] |
-| 13.4.3 | Create | Fill title + a couple of fields, submit | Toast "Task created."; modal closes; the new task appears in **Backlog** (refresh if needed) | [ ] |
+| 13.4.3 | Create | Fill title + a couple of fields, submit | Toast "Task created."; modal closes; the new task appears in **Backlog** without a refresh | [ ] |
 | 13.4.4 | Assignee options | Open the Assignee dropdown | Lists members with access to this project (+ yourself) — not the whole workspace | [ ] |
 | 13.4.5 | Settings gear (Owner/Admin) | Log in as **Owner**, open the project, click the gear | Project Settings modal with **Details** and **Access** tabs | [ ] |
 | 13.4.6 | Edit details | On Details, change the name, Save | Toast; name updates (reflected in sidebar/breadcrumb after refresh) | [ ] |
@@ -429,7 +431,7 @@ Open from a board card, a list row, a dashboard task, or directly at `/projects/
 |---|------|-------|----------|---|
 | 15.2.1 | Properties shown | Inspect the panel | Status, Assignee, Priority, Due date, Labels rows | [ ] |
 | 15.2.2 | Edit title | As dev1, click the title, change it, blur/Enter | Title saves; reflected on the card/list after refresh | [ ] |
-| 15.2.3 | Change status | Use the status dropdown | Updates; the card moves columns on the board behind it (refresh if needed) | [ ] |
+| 15.2.3 | Change status | Use the status dropdown | Updates; the card moves columns on the board behind it without a refresh | [ ] |
 | 15.2.4 | Change assignee | Pick a different member | Assignee updates | [ ] |
 | 15.2.5 | Priority / due / labels | Change each | Each persists on refresh; due-date picker accepts a date; labels are multi-select | [ ] |
 | 15.2.6 | Viewer read-only | Log in as **viewer**, open a task | All properties are read-only (no dropdowns/pickers); no comment box | [ ] |
@@ -459,7 +461,7 @@ Open from a board card, a list row, a dashboard task, or directly at `/projects/
 
 Generate some first: as **dev1**, on Mobile App Redesign, (a) comment with `@vivian-watch` on a task, and (b) reassign a task to **dev2**. Then log in as the recipient.
 
-> No real-time (H1): the bell badge refreshes on navigation/poll, not instantly. Refresh if needed.
+> **Real-time (H1):** the bell badge now updates **live** — when a notification is generated for the logged-in user in another tab/session, the count should increment within ~1s without a refresh (see §19.3). A slow background poll is still a safety net.
 
 | # | Test | Steps | Expected | ✓ |
 |---|------|-------|----------|---|
@@ -558,25 +560,61 @@ Available to **all** roles (own profile).
 
 ---
 
-## 19. Accessibility & polish quick-checks
+## 19. Real-time updates (Phase H1) — PRD §15.4/§19, TDD §10
 
-Lightweight manual pass — full a11y sweep is Phase H4.
+The WebSocket bridge pushes server changes into the UI live. Best tested with **two browser contexts side by side** — either two tabs as the **same** user, or two separate browsers/profiles logged in as **different** users who share a project (e.g. **dev1** and **dev2**, both with access to **Mobile App Redesign**). Keep both windows visible at once; the receiving window should update **without a manual refresh**, typically within ~1 second.
+
+> Connection mechanics: the socket connects after login and carries the CSRF token. On a dropped connection the app shows a discreet **"Reconnecting…"** pill (bottom-left) and, on reconnect, **resyncs** all data. Auth failures (`4401`/`4403`) end the session and route to `/login`.
 
 | # | Test | Steps | Expected | ✓ |
 |---|------|-------|----------|---|
-| 19.1 | Keyboard-only login | Tab through `/login`, submit with Enter | All fields reachable in logical order; visible focus rings; form submits via keyboard | [ ] |
-| 19.2 | Field labels | Inspect inputs (login, Create Project/Task, Invite, Label, Profile) | Each field has an associated label (not placeholder-only) | [ ] |
-| 19.3 | Error association | Trigger an inline error | Error text sits below the field and is announced/associated (DRD §18.1) | [ ] |
-| 19.4 | Modal focus | Open any modal (Create Task, Invite, Confirm) | Focus moves into the modal; Esc closes it; focus returns to the trigger | [ ] |
-| 19.5 | Panel keyboard | Open the task panel | Esc closes it; controls are reachable by keyboard | [ ] |
-| 19.6 | Search keyboard | Open search, arrow through results, Enter | Fully operable from the keyboard | [ ] |
-| 19.7 | Reduced motion | Enable OS "Reduce Motion", reload | Transitions/animations (modals, panel slide-in) are disabled or minimal | [ ] |
-| 19.8 | No console errors | Watch DevTools Console across all flows | No uncaught errors or React warnings during normal use | [ ] |
-| 19.9 | Tokens applied | Visual scan across screens | Warm-neutral palette, Inter font, consistent spacing per the design system | [ ] |
+| 19.1 | Board move propagates | Window A & B both on Mobile App Redesign board (A=dev1, B=dev2). In A, drag a card to a new column | B's board reflects the move within ~1s — **no refresh** | [ ] |
+| 19.2 | Task panel updates | B has the task panel open for task X; in A change task X's priority/assignee | B's open panel reflects the change live | [ ] |
+| 19.3 | Notification badge live | In A (dev1) @mention **dev2** in a comment (or reassign a task to dev2) | B's (dev2) header bell badge increments live; opening §16 shows the new notification | [ ] |
+| 19.4 | Comment appears live | B has task X's panel open; in A post a comment on task X | The comment appears in B's thread without a refresh | [ ] |
+| 19.5 | Activity feed live | B on the dashboard; in A perform an action in a project B can see | B's Recent Activity gains the new entry live | [ ] |
+| 19.6 | Reconnecting indicator | In one window, DevTools → Network → **Offline**, wait a few seconds | A "Reconnecting…" pill appears; restoring the network clears it and data resyncs | [ ] |
+| 19.7 | @mention announced (a11y) | With a screen reader on, receive an @mention in another window | The mention is announced via the polite live region (TDD §10.3) | [ ] |
+| 19.8 | No cross-workspace leakage | Window B logged into a **fresh-signup** workspace (§7.2); in A act within Aurora Studio | B receives **nothing** — events never cross workspaces | [ ] |
+
+> If a receiving window only updates after a manual refresh, that's a **defect** now (it was expected behavior pre-H1). Brief lag (~1s) or a momentary "Reconnecting…" is normal.
 
 ---
 
-## 20. Defect log
+## 20. Toasts & error feedback (Phase H3) — DRD §7.8/§18.2
+
+Async actions give non-blocking **toast** feedback (bottom-right, dark pill, auto-dismiss ~5s, manually dismissable via the ×). Success toasts are exercised throughout (§12.6, §13.4, §16, §18); this section spot-checks the **error** path and toast mechanics.
+
+| # | Test | Steps | Expected | ✓ |
+|---|------|-------|----------|---|
+| 20.1 | Success toast | Create a project (§12.6.4) or save a setting | A success toast appears bottom-right and auto-dismisses after ~5s | [ ] |
+| 20.2 | Manual dismiss | Trigger any toast, click its **×** before it auto-dismisses | The toast closes immediately | [ ] |
+| 20.3 | Standardized error toast | DevTools → block a mutation (e.g. `PATCH /workspaces/me/members/*` then change a role; or block `DELETE /labels/*` then delete a label) | An error toast "Couldn't save your changes. Please try again." appears; the optimistic/UI change does not silently persist | [ ] |
+| 20.4 | Inline errors still contextual | Enter a **wrong current password** in Profile → Change password (§18.5.5) | The error shows **inline** by the field (not just a toast) — contextual errors aren't replaced by the generic toast | [ ] |
+| 20.5 | Reduced motion | Enable OS "Reduce Motion", trigger a toast | The toast appears without the fade-up animation | [ ] |
+
+---
+
+## 21. Accessibility & polish quick-checks
+
+Lightweight manual pass. The automated `vitest-axe` pass (H4) is done; the full manual screen-reader/contrast sweep is tracked in `apps/web/docs/a11y-manual-checklist.md`.
+
+| # | Test | Steps | Expected | ✓ |
+|---|------|-------|----------|---|
+| 21.1 | Keyboard-only login | Tab through `/login`, submit with Enter | All fields reachable in logical order; visible focus rings; form submits via keyboard | [ ] |
+| 21.2 | Field labels | Inspect inputs (login, Create Project/Task, Invite, Label, Profile) | Each field has an associated label (not placeholder-only) | [ ] |
+| 21.3 | Error association | Trigger an inline error | Error text sits below the field and is announced/associated (DRD §18.1) | [ ] |
+| 21.4 | Modal focus | Open any modal (Create Task, Invite, Confirm) | Focus moves into the modal; Esc closes it; focus returns to the trigger | [ ] |
+| 21.5 | Confirm-dialog description | Open a destructive confirm (Remove member / Delete label) with a screen reader | The consequence sentence is announced (the dialog is described via `aria-describedby` — H4) | [ ] |
+| 21.6 | Panel keyboard | Open the task panel | Esc closes it; controls are reachable by keyboard | [ ] |
+| 21.7 | Search keyboard | Open search, arrow through results, Enter | Fully operable from the keyboard | [ ] |
+| 21.8 | Reduced motion | Enable OS "Reduce Motion", reload | Transitions/animations (modals, panel slide-in, toasts) are disabled or minimal | [ ] |
+| 21.9 | No console errors | Watch DevTools Console across all flows | No uncaught errors or React warnings during normal use | [ ] |
+| 21.10 | Tokens applied | Visual scan across screens | Warm-neutral palette, Inter font, consistent spacing per the design system | [ ] |
+
+---
+
+## 22. Defect log
 
 Record anything that deviates from **Expected**. Keep "expected-deferred" observations (see §1 out-of-scope) separate from real defects.
 
@@ -590,7 +628,7 @@ Record anything that deviates from **Expected**. Keep "expected-deferred" observ
 
 ---
 
-## 21. Sign-off
+## 23. Sign-off
 
 - [ ] All §5 (shell) checks pass
 - [ ] All §6 (login) checks pass
@@ -605,8 +643,10 @@ Record anything that deviates from **Expected**. Keep "expected-deferred" observ
 - [ ] All §16 (notifications) checks pass
 - [ ] All §17 (search) checks pass
 - [ ] All §18 (settings) checks pass
-- [ ] §19 quick-checks pass
-- [ ] Defects logged in §20
+- [ ] All §19 (real-time) checks pass
+- [ ] All §20 (toasts & errors) checks pass
+- [ ] §21 accessibility quick-checks pass
+- [ ] Defects logged in §22
 
 **Tested by:** ________________  **Date:** ____________  **Build / commit:** ____________
 
