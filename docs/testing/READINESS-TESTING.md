@@ -114,7 +114,7 @@ The seed builds **3 projects** with this access layout (Owner + Admin have impli
 - Work top-to-bottom; later sections assume earlier ones passed.
 - Each test has a **Steps** list and an **Expected** result. Tick the checkbox if it matches.
 - Use a **fresh browser profile or incognito window** per auth journey so stale cookies don't mask bugs. Keep **DevTools → Application → Cookies** and the **Console** tab open throughout.
-- Log anything that fails in §20 (Defect Log).
+- Log anything that fails in §22 (Defect Log).
 
 **Reference specs** if you need to settle "is this a bug?":
 DRD §8.1 (Login/Signup), §8.2 (Accept Invitation), §8.3 (Dashboard), §8.4 (Board), §8.5 (List), §8.6 (Notifications), §8.7–§8.10 (Settings), §9 (Task panel), §10 (modals), §11.1 (Search), §11.4 (@mention), §16 (Empty states), §18 (Validation/confirmations) · PRD §3 (Auth), §6 (Tasks), §8 (Board), §9 (List), §10 (Task detail), §11 (Comments), §12 (Search), §13 (Dashboard), §15 (Notifications), §4/§7/§20 (Settings) · TDD §11 (Sessions/cookies).
