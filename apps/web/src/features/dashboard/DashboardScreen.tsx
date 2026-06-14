@@ -1,4 +1,5 @@
 import { useIntl } from 'react-intl';
+import { useWorkspace } from '@/features/settings/useWorkspace';
 import { useCurrentUser } from '@/hooks/useCurrentUser';
 import { MyTasksSection } from './MyTasksSection';
 import { ProjectsSection } from './ProjectsSection';
@@ -14,6 +15,7 @@ import { useDashboardActivity, useMyTasks } from './useDashboard';
 export function DashboardScreen() {
   const intl = useIntl();
   const { data: user } = useCurrentUser();
+  const { data: workspace } = useWorkspace();
   const myTasks = useMyTasks();
   const activity = useDashboardActivity();
 
@@ -22,6 +24,7 @@ export function DashboardScreen() {
   const showWelcome =
     user !== undefined &&
     user.role !== 'owner' &&
+    !!workspace?.name &&
     !myTasks.isPending &&
     !activity.isPending &&
     !hasTasks &&
@@ -32,7 +35,10 @@ export function DashboardScreen() {
       {showWelcome ? (
         <div className="mb-6 rounded-md border border-border bg-bg-card px-4 py-3">
           <p className="text-[15px] font-semibold text-text-primary">
-            {intl.formatMessage({ id: 'dashboard.welcome.title' })}
+            {intl.formatMessage(
+              { id: 'dashboard.welcome.title' },
+              { workspaceName: workspace?.name },
+            )}
           </p>
           <p className="mt-0.5 text-[13px] text-text-secondary">
             {intl.formatMessage({ id: 'dashboard.welcome.body' })}

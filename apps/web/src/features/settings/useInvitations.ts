@@ -34,5 +34,6 @@ export function useResendInvitation() {
     mutationFn: (id) =>
       apiClient.post<ResendInvitationResponse>(`/workspaces/me/invitations/${id}/resend`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: INVITATIONS_KEY }),
+    meta: { errorToast: true },
   });
 }

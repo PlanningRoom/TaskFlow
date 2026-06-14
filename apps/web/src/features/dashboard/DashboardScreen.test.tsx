@@ -26,7 +26,11 @@ const owner = {
 
 const recently = new Date(Date.now() - 5 * 60_000).toISOString();
 
+const workspace = { id: 'w1', name: 'Aurora Studio' };
+
 const populated = {
+  '/workspaces/me': workspace,
+  '/projects': { projects: [{ id: 'p1', name: 'Website Redesign', color: '#0d9488' }] },
   '/dashboard/my-tasks': {
     groups: [
       {
@@ -89,6 +93,8 @@ const populated = {
 };
 
 const empty = {
+  '/workspaces/me': workspace,
+  '/projects': { projects: [] },
   '/dashboard/my-tasks': { groups: [] },
   '/dashboard/projects': { projects: [] },
   '/activity': { events: [], next_cursor: null },
@@ -149,10 +155,10 @@ describe('DashboardScreen', () => {
     expect(queryByRole('button', { name: 'Create your first project' })).toBeNull();
   });
 
-  it('welcomes an invited user with no tasks or activity yet', async () => {
+  it('welcomes an invited user by workspace name with no tasks or activity yet', async () => {
     mockApi({ ...owner, role: 'member' }, empty);
     const { findByText } = renderWithProviders(<DashboardScreen />);
-    expect(await findByText('Welcome to your workspace.')).toBeInTheDocument();
+    expect(await findByText('Welcome to Aurora Studio.')).toBeInTheDocument();
   });
 
   it('does not show the welcome banner to the Owner', async () => {
@@ -160,6 +166,6 @@ describe('DashboardScreen', () => {
     const { findByText, queryByText } = renderWithProviders(<DashboardScreen />);
     await findByText('No projects yet.');
     await waitFor(() => expect(apiClient.get).toHaveBeenCalledWith('/activity'));
-    expect(queryByText('Welcome to your workspace.')).toBeNull();
+    expect(queryByText(/^Welcome to/)).toBeNull();
   });
 });

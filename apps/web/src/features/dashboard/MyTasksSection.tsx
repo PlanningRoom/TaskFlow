@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router';
 import { useIntl } from 'react-intl';
 import type { MyTaskGroup } from '@/api/types';
 import { DueDate, PriorityIcon, StatusBadge } from '@/components/ui';
+import { useProjects } from '@/hooks/useProjects';
 import { DashboardNote, DashboardSection } from './DashboardSection';
 import { useMyTasks } from './useDashboard';
 
@@ -13,6 +14,8 @@ import { useMyTasks } from './useDashboard';
 export function MyTasksSection() {
   const intl = useIntl();
   const { data, isPending, isError } = useMyTasks();
+  const { data: projectsData } = useProjects();
+  const firstProject = projectsData?.projects[0];
   const groups = data?.groups ?? [];
   const hasTasks = groups.some((g) => g.tasks.length > 0);
 
@@ -31,7 +34,18 @@ export function MyTasksSection() {
             ))}
         </div>
       ) : (
-        <DashboardNote>{intl.formatMessage({ id: 'dashboard.myTasks.empty' })}</DashboardNote>
+        <div className="flex flex-col items-start gap-2">
+          <DashboardNote>{intl.formatMessage({ id: 'dashboard.myTasks.empty' })}</DashboardNote>
+          {firstProject ? (
+            <Link
+              to="/projects/$projectId/board"
+              params={{ projectId: firstProject.id }}
+              className="text-[13px] text-primary underline"
+            >
+              {intl.formatMessage({ id: 'dashboard.myTasks.browse' })}
+            </Link>
+          ) : null}
+        </div>
       )}
     </DashboardSection>
   );

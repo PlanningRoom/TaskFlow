@@ -20,6 +20,7 @@ export function useChangeRole() {
     mutationFn: ({ userId, role }) =>
       apiClient.patch<Member>(`/workspaces/me/members/${userId}`, { role }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: MEMBERS_KEY }),
+    meta: { errorToast: true },
   });
 }
 
@@ -28,5 +29,6 @@ export function useRemoveMember() {
   return useApiMutation<OkResponse, string>({
     mutationFn: (userId) => apiClient.delete<OkResponse>(`/workspaces/me/members/${userId}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: MEMBERS_KEY }),
+    meta: { errorToast: true },
   });
 }

@@ -3,6 +3,7 @@ import { RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { IntlProvider } from 'react-intl';
+import { MutationErrorListener } from '@/app/MutationErrorListener';
 import { queryClient } from '@/app/query-client';
 import { router } from '@/app/router';
 import { ToastProvider } from '@/components/ui/Toast';
@@ -24,6 +25,7 @@ createRoot(rootElement).render(
       <QueryClientProvider client={queryClient}>
         <TooltipProvider delayDuration={200}>
           <ToastProvider>
+            <MutationErrorListener />
             <RealtimeProvider>
               <RouterProvider router={router} />
             </RealtimeProvider>

@@ -127,5 +127,8 @@ export function useUpdateTaskStatus(projectId: string) {
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ['tasks', projectId] });
     },
+    // Board/list status changes fail silently otherwise — the optimistic row
+    // just snaps back. Surface the standardized error toast (DRD §18.2).
+    meta: { errorToast: true },
   });
 }

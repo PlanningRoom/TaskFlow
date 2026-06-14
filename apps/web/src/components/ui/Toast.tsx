@@ -1,15 +1,19 @@
 import * as ToastPrimitive from '@radix-ui/react-toast';
 import { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { cn } from '@/lib/cn';
-import { Check } from './icons';
+import { AlertCircle, Check, X } from './icons';
 
 /**
- * Toast (DRD §7.8) — bottom-right, dark surface, green success check, 5s
- * auto-dismiss, fade-up (reduced-motion handled globally in global.css). Built
- * on Radix Toast. Wrap the app in <ToastProvider> and call `useToast().show()`.
+ * Toast (DRD §7.8 / §18.2) — bottom-right, dark surface, 5s auto-dismiss,
+ * fade-up (reduced-motion handled globally in global.css), with a green check
+ * for success / red alert for error and a manual dismiss affordance. Built on
+ * Radix Toast. Wrap the app in <ToastProvider> and call `useToast().show()`.
  *
- * The richer global store lands in Phase H3; this is the primitive + a minimal
- * context so screens can surface success/error feedback now.
+ * Phase H3 kept this Context-based primitive rather than migrating to the
+ * Zustand store named in the plan: the context already covers every call site
+ * and a store swap would be churn with no functional gain (see
+ * implementation-status.md H3 note). Standardized mutation-error toasts are
+ * driven from the QueryClient via {@link registerMutationErrorHandler}.
  */
 interface ToastItem {
   id: number;
@@ -57,10 +61,18 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
               'data-[state=open]:animate-in data-[state=closed]:animate-out',
             )}
           >
-            {t.variant === 'success' && (
-              <Check size={18} className="text-semantic-success" aria-hidden />
+            {t.variant === 'success' ? (
+              <Check size={18} className="shrink-0 text-semantic-success" aria-hidden />
+            ) : (
+              <AlertCircle size={18} className="shrink-0 text-semantic-error" aria-hidden />
             )}
             <ToastPrimitive.Description>{t.message}</ToastPrimitive.Description>
+            <ToastPrimitive.Close
+              aria-label="Dismiss"
+              className="-me-2 ms-1 shrink-0 rounded-sm p-1 text-white/60 transition-colors hover:text-white"
+            >
+              <X size={14} aria-hidden />
+            </ToastPrimitive.Close>
           </ToastPrimitive.Root>
         ))}
         <ToastPrimitive.Viewport className="fixed bottom-6 right-6 z-[999] flex flex-col gap-2 outline-none" />

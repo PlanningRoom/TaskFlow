@@ -4,6 +4,7 @@
  * lets us apply DRD §4.2 default sizing/stroke via <Icon> below.
  */
 export {
+  AlertCircle,
   ArrowUpDown,
   Bell,
   Calendar,
@@ -21,5 +22,6 @@ export {
   Search,
   Settings,
   Trash2,
+  UserPlus,
   X,
 } from 'lucide-react';

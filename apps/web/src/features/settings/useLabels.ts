@@ -41,5 +41,6 @@ export function useDeleteLabel() {
   return useApiMutation<OkResponse, string>({
     mutationFn: (labelId) => apiClient.delete<OkResponse>(`/labels/${labelId}`),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: LABELS_KEY }),
+    meta: { errorToast: true },
   });
 }

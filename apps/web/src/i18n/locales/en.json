@@ -7,6 +7,10 @@
   "realtime.online": "Back online",
   "realtime.mentioned": "You were mentioned in a comment",
 
+  "errors.mutation": "Couldn't save your changes. Please try again.",
+
+  "sidebar.inviteTeam": "Invite team members",
+
   "auth.field.email": "Email",
   "auth.field.password": "Password",
   "auth.field.displayName": "Display name",
@@ -56,11 +60,12 @@
   "auth.newPassword.loginLink": "Log in",
 
   "dashboard.error": "Couldn't load this section. Please try again.",
-  "dashboard.welcome.title": "Welcome to your workspace.",
+  "dashboard.welcome.title": "Welcome to {workspaceName}.",
   "dashboard.welcome.body": "Your assigned tasks and recent activity will show up here.",
 
   "dashboard.myTasks.title": "My tasks",
   "dashboard.myTasks.empty": "No tasks assigned to you yet.",
+  "dashboard.myTasks.browse": "Browse projects",
 
   "dashboard.activity.title": "Recent activity",
   "dashboard.activity.empty": "No recent activity.",
