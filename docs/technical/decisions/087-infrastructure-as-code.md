@@ -25,9 +25,9 @@ Resources managed via CloudFormation:
 | `container-registry` | ECR repositories (`taskflow/api`, `taskflow/web`) with lifecycle policies |
 | `parameters` | SSM Parameter Store SecureString parameters (values set out-of-band) |
 | `monitoring` | CloudWatch log groups, metric filters, alarms, SNS topic |
-| `dns` | Route 53 hosted zone + A record → EC2 Elastic IP |
-| `email` | SES verified domain identity, DKIM records |
 | `iam` | OIDC provider for GitHub Actions, deploy role |
+
+**Not in CloudFormation (managed in Cloudflare / Resend):** DNS (the proxied A record → EC2 Elastic IP) lives in **Cloudflare**, and transactional-email auth (the **Resend** SPF/DKIM/DMARC records) is added as Cloudflare DNS records. There is no `dns` or `email` CloudFormation stack — Cloudflare and Resend are configured via their own dashboards/APIs (Decisions 036, 067, 085).
 
 Deployment: `aws cloudformation deploy --template-file ... --stack-name ... --capabilities CAPABILITY_NAMED_IAM`.
 

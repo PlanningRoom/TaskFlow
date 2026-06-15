@@ -228,7 +228,7 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 
 #### Phase D2 — Background Jobs and Email `[x] Complete`
 - [x] APScheduler jobs (invitation expire, session cleanup, password-reset cleanup, pg_dump)
-- [x] SES adapter (prod) + SMTP-to-MailHog adapter (dev)
+- [x] SES adapter (prod) + SMTP-to-MailHog adapter (dev) — **prod adapter superseded by Resend (ADR 067, 2026-06-14); SES sender swapped out in I2.** Dev MailHog path unchanged.
 - [x] Email templates (invitation, password reset)
 - [x] `BackgroundTasks` wired for invitation send and password-reset send
 - [x] Manual end-to-end: invitation arrives in MailHog and accept-invitation works — verified 2026-05-23 against docker-compose stack (both invitation + password-reset emails landed; `email.send.success` events logged with `backend=smtp`).
@@ -462,15 +462,15 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 - [ ] `compute.yml` (with user-data)
 - [ ] `container-registry.yml` (lifecycle policies)
 - [ ] `storage.yml` (S3 backups + source maps)
-- [ ] `parameters.yml` (SSM SecureString placeholders)
-- [ ] `email.yml` (SES + DKIM)
+- [ ] `parameters.yml` (SSM SecureString placeholders, incl. `resend_api_key`)
 - [ ] `monitoring.yml` (log groups, metric filters, alarms, SNS)
-- [ ] `dns.yml` (Route 53, A record, MX/TXT, ACM)
 - [ ] `iam.yml` (OIDC + deploy role)
+- [ ] Swap the email adapter to **Resend** (HTTP API) — prod sender + `.env`/settings; dev MailHog unchanged (deferred from the 2026-06-14 provider change)
 - [ ] `infra/ec2/user-data.sh`
-- [ ] `docker-compose.prod.yml` with nginx + api + web + db + certbot
-- [ ] Certbot wired (issue + renew)
+- [ ] `docker-compose.prod.yml` with nginx + api + web + db (no certbot)
+- [ ] **Cloudflare** Origin CA cert installed + nginx cert paths updated; proxied zone at Full (strict); proxied `A` record + Resend SPF/DKIM/DMARC records added
 - [ ] `cfn-lint` clean in CI
+- [ ] *(No `dns.yml` / `email.yml` / ACM — DNS + email-auth are in Cloudflare, not CFN)*
 
 #### Phase I3 — CD Pipeline `[ ] Not started`
 - [ ] `.github/workflows/deploy.yml`
@@ -485,8 +485,8 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 #### Phase I4 — Production Cutover `[ ] Not started`
 - [ ] All SSM Parameter Store values populated
 - [ ] First deploy succeeds
-- [ ] Let's Encrypt cert issued
-- [ ] Route 53 A record cut to Elastic IP
+- [ ] Cloudflare Origin CA cert installed + edge TLS (Full strict) verified
+- [ ] Cloudflare proxied `A` record cut to Elastic IP; Resend email delivers (SPF/DKIM/DMARC live)
 - [ ] Manual smoke (signup → project → task → invite → real-time)
 - [ ] SSL Labs grade ≥A
 - [ ] Mozilla Observatory grade ≥A
@@ -523,6 +523,16 @@ These were surfaced during plan validation (§6.4 of the implementation plan). R
 ## Notes
 
 Use this section as a running log of decisions, blockers, or context that should persist across sessions.
+
+### 2026-06-14 — Infra decision change: Cloudflare DNS + Resend email (pre-Part I)
+
+Two production-stack decisions changed before building Part I, with the **code deferred to I2** (docs/decisions updated now):
+
+- **DNS: Route 53 → Cloudflare** (proxied / "orange cloud"). **TLS: Let's Encrypt + certbot → Cloudflare edge TLS + a Cloudflare Origin CA cert** on the origin (Full strict). Removes the certbot container/cron and the ACM cert; adds Cloudflare CDN/DDoS. Updated ADR 036 + **ADR 085 amendment**, TDD §2.2/§3/§5 (diagrams + tables + topology), plan E1/I2/I4, status I2/I4.
+- **Email: Amazon SES → Resend** (HTTP API via `httpx`; `EMAIL_BACKEND=resend`). Dev SMTP→MailHog unchanged. Resend's SPF/DKIM/DMARC records live in Cloudflare DNS. Updated **ADR 067** (decision rewritten + amendment), ADRs 036/039/049/073/087, TDD, plan D2/I2/I4, status.
+- **CloudFormation:** the `dns` and `email` stacks (and ACM) are **removed** — DNS + email-auth are managed in Cloudflare/Resend, not CFN (ADR 087, TDD §5.1).
+
+**Deferred code (all in I2):** swap the D2 prod email adapter `ses.py` (`aioboto3`) → a Resend `httpx` sender; update `settings.py`/`.env.example` (`RESEND_API_KEY`, drop SES/`CERTBOT_EMAIL` vars); repoint `infra/nginx/nginx.conf` cert paths off the Let's Encrypt layout to the Origin CA cert; drop `certbot` from `docker-compose.prod.yml`. The built SES adapter + Let's-Encrypt nginx paths remain in the repo until then — see the annotated D2/E1 lines above.
 
 ### 2026-06-14 — Phases H2–H5 complete (Part H finished)
 
@@ -1017,7 +1027,7 @@ The activity/notification helpers all gained a `request: Request | None = None` 
 
 **Files added:**
 - `apps/api/taskflow/rate_limit.py` — `Limiter` instance, `ip_key` (honors `X-Forwarded-For`), `email_key_factory` (peeks the JSON body), `workspace_key` (uses `request.state.workspace_id` if present, else the session-cookie value, else IP), and `rate_limit_exceeded_handler` which translates `RateLimitExceeded → RateLimitedError` so the ADR 043 envelope + `Retry-After` flow through the existing handler.
-- `infra/nginx/nginx.conf` — HTTP→HTTPS redirect block, TLS server block with the ADR 083 headers (HSTS preload, strict CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`), routing for `/api/*`, `/ws` (with `Upgrade`/`Connection` and 3600s read timeout), `/health`, and an SPA fallback to the web container. Certificate paths reference Let's Encrypt's default layout; certbot issuance is deferred to Phase I2.
+- `infra/nginx/nginx.conf` — HTTP→HTTPS redirect block, TLS server block with the ADR 083 headers (HSTS preload, strict CSP, `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options`), routing for `/api/*`, `/ws` (with `Upgrade`/`Connection` and 3600s read timeout), `/health`, and an SPA fallback to the web container. Certificate paths reference Let's Encrypt's default layout. **As of 2026-06-14 (ADR 085 amendment), TLS moved to Cloudflare edge + a Cloudflare Origin CA cert — no certbot; the nginx cert paths are updated in Phase I2.**
 - `apps/api/tests/integration/test_rate_limits.py` — 5 cases covering signup per-IP, login per-IP-across-emails, login per-email-across-IPs (via rotated `X-Forwarded-For`), password-reset per-IP, and invitations per-workspace.
 - `apps/api/tests/integration/test_audit_coverage.py` — single sweep that drives every endpoint that should write an audit row, then asserts `SELECT DISTINCT event_type FROM audit_log == set(AUDIT_EVENT_TYPES)`. Plus a static guard that `AUDIT_EVENT_TYPES` and the model's CHECK SQL stay in sync.
 

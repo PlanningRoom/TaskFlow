@@ -22,8 +22,9 @@
 - `/taskflow/prod/database_url`
 - `/taskflow/prod/session_secret`
 - `/taskflow/prod/csrf_secret`
-- `/taskflow/prod/ses_from_address`
-- Any SES / domain values.
+- `/taskflow/prod/resend_api_key`
+- `/taskflow/prod/email_from_address`
+- Any other Resend / domain values. (Cloudflare DNS and the Cloudflare Origin CA cert are configured in Cloudflare; a Cloudflare API token only needs storing here if DNS is later automated.)
 
 The EC2 instance has an IAM role granting read access to `/taskflow/prod/*`. The app reads these parameters at boot via `boto3.client('ssm').get_parameters_by_path(..., WithDecryption=True)` and exposes them to the process as environment variables.
 

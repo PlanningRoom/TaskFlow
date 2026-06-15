@@ -19,4 +19,4 @@
 
 A `Makefile` provides ergonomic wrappers (`make dev`, `make test`, `make migrate`, `make seed`).
 
-**Rationale:** User constraint — Docker for local dev. Compose matches production topology closely (same images, same Postgres version), reducing "works on my machine" bugs. MailHog stands in for Amazon SES locally. One-command start is the target for contributor onboarding.
+**Rationale:** User constraint — Docker for local dev. Compose matches production topology closely (same images, same Postgres version), reducing "works on my machine" bugs. MailHog stands in for Resend locally (Decision 067). One-command start is the target for contributor onboarding.

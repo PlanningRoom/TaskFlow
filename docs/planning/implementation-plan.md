@@ -430,7 +430,7 @@ Each Part C phase follows the same pattern: Pydantic DTOs, service layer, endpoi
   - Delete expired sessions (daily 04:00 UTC).
   - Delete expired password-reset tokens (daily 04:00 UTC).
   - `pg_dump` to S3 (daily 03:00 UTC) — implemented as a shell-out in the job; in dev a no-op (ADR 074).
-- SES adapter (ADR 067) with two implementations: SES (prod) and SMTP-to-MailHog (dev). Selected by env.
+- Email adapter (ADR 067) with two implementations: **Resend HTTP API** (prod) and SMTP-to-MailHog (dev). Selected by env. (D2 originally shipped an SES adapter; the prod adapter is swapped to Resend in I2 per the 2026-06-14 provider change — see `implementation-status.md`.)
 - Email templates (plain text + HTML) for: invitation, password reset.
 - Wire `BackgroundTasks` for invitation send and password-reset send (TDD §7.4).
 - Tests: scheduler boots; jobs execute (manual trigger); MailHog receives invitation email in dev.
@@ -456,7 +456,7 @@ Each Part C phase follows the same pattern: Pydantic DTOs, service layer, endpoi
 - Audit coverage check: walk the audit_log spec (ADR 084) and verify every event type is emitted by some service path. Add tests that drive the path and assert the row.
 - Integration tests for rate-limit responses and nginx config (via `nginx -t` in CI).
 
-**Deliverables:** All sensitive endpoints rate-limited; nginx config is production-ready (TLS termination is added in I2 with certbot).
+**Deliverables:** All sensitive endpoints rate-limited; nginx config is production-ready (origin TLS termination with the Cloudflare Origin CA cert is wired in I2 — no certbot).
 
 **Definition of done:** Rate-limit tests pass. `nginx -t` passes in CI. Audit-coverage tests pass.
 
@@ -926,14 +926,14 @@ Each Part G phase reads: build the screen with full state coverage (loading / er
   - `compute.yml` — EC2 `t4g.small`, Elastic IP, IAM instance profile, user-data installing Docker + CloudWatch Agent.
   - `container-registry.yml` — ECR repos `taskflow/api`, `taskflow/web` with lifecycle policy.
   - `storage.yml` — S3 buckets for backups (SSE-S3, 30-day lifecycle) and source maps.
-  - `parameters.yml` — SSM Parameter Store SecureString placeholders under `/taskflow/prod/*`.
-  - `email.yml` — SES verified domain identity, DKIM records.
+  - `parameters.yml` — SSM Parameter Store SecureString placeholders under `/taskflow/prod/*` (incl. `resend_api_key`, `email_from_address`).
   - `monitoring.yml` — CloudWatch log groups, metric filters, alarms (per TDD §13.3), SNS topic `taskflow-alerts`.
-  - `dns.yml` — Route 53 zone, A record → Elastic IP, MX/TXT for SES, ACM cert (provisioned for future).
   - `iam.yml` — OIDC provider for GitHub Actions, `taskflow-deploy-role` with narrow permissions.
+  - *(No `dns.yml` / `email.yml` / ACM — DNS and Resend's SPF/DKIM/DMARC records are configured in **Cloudflare**, not CloudFormation; ADR 036/067/087.)*
+- **Swap the D2 email adapter to Resend** (ADR 067): replace the prod SES (`aioboto3`) sender with a Resend HTTP-API sender (`httpx`), `EMAIL_BACKEND=resend`; dev SMTP→MailHog unchanged. Update `.env.example`/settings (`RESEND_API_KEY`, drop SES vars). *(This is the deferred code from the 2026-06-14 provider change.)*
 - Author `infra/ec2/user-data.sh` per TDD §5.1.
-- Author `docker-compose.prod.yml` with nginx + api + web + db + certbot.
-- Wire certbot for Let's Encrypt issuance/renewal (ADR 085 / TDD §5.4).
+- Author `docker-compose.prod.yml` with nginx + api + web + db (no `certbot`).
+- **Cloudflare setup** (ADR 085 / TDD §5.4): create the Cloudflare Origin CA cert, install it on the host + point nginx at it, update `infra/nginx/nginx.conf` cert paths off the old Let's Encrypt layout, and enable the proxied zone at **Full (strict)**. Add the proxied `A` record and Resend DNS records in Cloudflare.
 - Validate templates via `cfn-lint` in CI.
 
 **Deliverables:** Infrastructure deployable from clean account.
@@ -971,10 +971,10 @@ Each Part G phase reads: build the screen with full state coverage (loading / er
 **Goal:** First production deploy, DNS cut, TLS active, smoke verified.
 
 **Tasks:**
-- Set all SSM Parameter Store values for production (DB password, session secret, SES creds, etc.) out-of-band.
+- Set all SSM Parameter Store values for production (DB password, session secret, `RESEND_API_KEY`, etc.) out-of-band.
 - Run the deploy workflow.
-- Verify Let's Encrypt certificate issuance and HTTPS reachability.
-- Cut Route 53 A record to the Elastic IP.
+- Install the Cloudflare Origin CA cert on the host and verify HTTPS reachability through the Cloudflare edge (Full strict).
+- Cut the Cloudflare **proxied** `A` record to the Elastic IP; confirm Resend's SPF/DKIM/DMARC records are live and a test email delivers.
 - Run the seed script in production (or skip if a real workspace will be created on first signup).
 - Manual smoke: signup, create project, create task, invite a second user, see real-time updates.
 

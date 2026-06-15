@@ -47,7 +47,7 @@ TaskFlow is a single-tenant cloud-hosted SaaS (ADR 002, 003) delivered as a web-
 1. **Do the simpler thing.** This is a demonstration project with a single contributor. Every service, subscription, or dependency must justify its complexity against the alternative of not having it.
 2. **Consolidate services.** One EC2 host runs the web, API, and database. No Redis, no RDS, no ALB, no ECS control plane. This trades scalability headroom for operational simplicity.
 3. **No third-party observability.** CloudWatch is the single observability plane (ADR 075–077). Avoids another vendor and another set of secrets.
-4. **AWS-native where possible.** SES for email (ADR 067), Parameter Store for secrets (ADR 073), CloudFormation for IaC (ADR 087). Reduces cross-account and cross-vendor surface.
+4. **AWS-native where it pays.** Parameter Store for secrets (ADR 073), CloudFormation for IaC (ADR 087). Two deliberate non-AWS exceptions are taken for developer experience: **Cloudflare** for DNS + edge TLS/CDN (ADR 036/085) and **Resend** for transactional email (ADR 067).
 5. **Future-ready but not future-built.** The code is written so that additional locales (ADR 018), a public API (ADR 013), a horizontally scaled deploy (ADR 045), and custom workflows (BRD §9) can be added without rearchitecture — but none of that work is done now.
 6. **Typed everywhere.** Strict TypeScript on the frontend (ADR 027), Pydantic v2 on the backend (ADR 042), types generated from the OpenAPI schema flow into the client (ADR 042). The type system is a primary bug-detection tool.
 7. **Tests hit real systems.** Integration tests run against a real Postgres (ADR 079); E2E tests run against a full `docker compose up` stack (ADR 080). Mocks are confined to the unit-test layer.
@@ -63,7 +63,9 @@ TaskFlow is a single-tenant cloud-hosted SaaS (ADR 002, 003) delivered as a web-
                                │ HTTPS / WSS
                                ▼
                        ┌─────────────────┐
-                       │   Route 53      │─────► taskflow.{domain}
+                       │   Cloudflare    │─────► taskflow.{domain}
+                       │  (proxied: edge │   edge TLS + CDN/DDoS
+                       │   TLS, CDN)     │
                        └────────┬────────┘
                                 │
                                 ▼
@@ -77,7 +79,7 @@ TaskFlow is a single-tenant cloud-hosted SaaS (ADR 002, 003) delivered as a web-
               │                                   │
               │  ┌──────────────────────────────┐ │
               │  │ nginx  (:443, :80→:443)      │ │
-              │  │  • TLS (Let's Encrypt)       │ │
+              │  │  • TLS (CF Origin CA)        │ │
               │  │  • Static /  → web container │ │
               │  │  • /api     → api container  │ │
               │  │  • /ws      → api container  │ │
@@ -105,9 +107,9 @@ TaskFlow is a single-tenant cloud-hosted SaaS (ADR 002, 003) delivered as a web-
  │ Store (Secure)  │                          │ lifecycle=30d   │
  └─────────────────┘                          └─────────────────┘
  ┌─────────────────┐                          ┌─────────────────┐
- │ CloudWatch      │                          │ SES             │
+ │ CloudWatch      │                          │ Resend          │
  │ Logs / Alarms   │                          │ Transactional   │
- │ SNS → email     │                          │ Email           │
+ │ SNS → email     │                          │ Email (HTTP API)│
  └─────────────────┘                          └─────────────────┘
  ┌─────────────────┐                          ┌─────────────────┐
  │ ECR             │                          │ GitHub Actions  │
@@ -147,7 +149,7 @@ TaskFlow is a single-tenant cloud-hosted SaaS (ADR 002, 003) delivered as a web-
 | Rate limiting | `slowapi` | 052 |
 | Database | PostgreSQL 16 | 033 |
 | Reverse proxy | nginx | 036, 083 |
-| TLS | Let's Encrypt via certbot | 085 |
+| TLS | Cloudflare edge + Cloudflare Origin CA cert on the origin | 085 |
 
 ### 3.2 Platform and tooling
 
@@ -160,8 +162,8 @@ TaskFlow is a single-tenant cloud-hosted SaaS (ADR 002, 003) delivered as a web-
 | CI secrets | GitHub Secrets + OIDC federation | 073 |
 | Runtime secrets | AWS SSM Parameter Store (SecureString) | 073 |
 | Container registry | Amazon ECR | 038 |
-| Email delivery | Amazon SES | 067 |
-| DNS | Route 53 | 036 |
+| Email delivery | Resend (HTTP API) | 067 |
+| DNS | Cloudflare (proxied) | 036 |
 | Backups | `pg_dump` → S3 with 30-day lifecycle | 074 |
 | Logging / metrics | CloudWatch Logs + Agent | 075 |
 | Error tracking | CloudWatch Logs metric filters | 076 |
@@ -256,9 +258,7 @@ taskflow/
 │   │   ├── container-registry.yml
 │   │   ├── parameters.yml
 │   │   ├── monitoring.yml
-│   │   ├── dns.yml
-│   │   ├── email.yml
-│   │   └── iam.yml
+│   │   └── iam.yml          # DNS + email-auth live in Cloudflare, not CFN
 │   ├── nginx/
 │   │   └── nginx.conf
 │   └── ec2/
@@ -301,16 +301,16 @@ All resources are provisioned via CloudFormation (ADR 087) organized into small,
 | `container-registry` | Image hosting | ECR repositories `taskflow/api`, `taskflow/web` with lifecycle policy (keep last 10 tagged, expire untagged after 7 days) |
 | `storage` | Persistence beyond the disk | S3 bucket for Postgres backups (SSE-S3, 30-day lifecycle), S3 bucket for source maps |
 | `parameters` | Config | SSM Parameter Store SecureString parameters under `/taskflow/prod/*` (values set out-of-band via CLI; stack manages names and KMS policy) |
-| `email` | Transactional email | SES verified domain identity, DKIM records |
 | `monitoring` | Observability | CloudWatch log groups, metric filters, alarms, SNS topic `taskflow-alerts` |
-| `dns` | DNS | Route 53 hosted zone, A record → Elastic IP, MX/TXT for SES, ACM cert (unused by this topology but provisioned for future HTTPS-via-ALB migration) |
 | `iam` | Deploy identity | OIDC provider for GitHub Actions; `taskflow-deploy-role` with narrow permissions (ECR push, CloudFormation deploy, SSM Run Command) |
+
+**Not in CloudFormation:** DNS and transactional-email auth are managed in **Cloudflare** (ADR 036/067/087). Cloudflare holds the proxied `A` record → Elastic IP and the Resend SPF/DKIM/DMARC records; the public edge cert is Cloudflare's and the origin cert is a Cloudflare Origin CA cert (ADR 085). There is no `dns`, `email`, or ACM resource in CFN.
 
 ### 5.2 Single-host topology
 
 The EC2 instance runs three containers via `docker-compose.prod.yml`:
 
-- **`nginx`** — public entry on `:80` and `:443`. Terminates TLS with a Let's Encrypt certificate (ADR 085). Routes:
+- **`nginx`** — origin entry on `:80` and `:443`, behind the Cloudflare proxy. Terminates the edge↔origin TLS with a **Cloudflare Origin CA certificate** (ADR 085; public TLS terminates at the Cloudflare edge). Routes:
   - `/api/*` → `api:8000`
   - `/ws` → `api:8000` (WebSocket upgrade)
   - everything else → `web:80` (static assets)
@@ -341,9 +341,9 @@ None of these are in scope for the demonstration launch.
 
 ### 5.4 TLS and domain
 
-Let's Encrypt certificates are provisioned and renewed by a `certbot` container that shares the nginx conf and cert directories (ADR 085). Renewal runs daily; nginx reload is triggered on new certs.
+TLS terminates at the **Cloudflare edge** for public traffic; the **edge↔origin** hop uses a long-lived **Cloudflare Origin CA certificate** installed on the host and served by nginx, with Cloudflare set to **Full (strict)** (ADR 085). There is no `certbot` container and no renewal cron — the Origin CA cert is valid for years and Cloudflare manages the public edge cert.
 
-DNS is Route 53 in the same AWS account. An `A` record points `taskflow.{domain}` at the Elastic IP.
+DNS is **Cloudflare** (proxied — "orange cloud"). A proxied `A` record points `taskflow.{domain}` at the Elastic IP, so Cloudflare's edge fronts the origin (TLS, CDN, DDoS protection). The Resend SPF/DKIM/DMARC records also live here.
 
 ---
 
@@ -541,7 +541,7 @@ async def create_task(
 
 Two mechanisms, no separate worker process:
 
-- **`BackgroundTasks`** for fire-and-forget in-request work — primarily sending email after a commit. Example: invitation creation commits, the response returns, SES is called from a background task so the user doesn't wait on network to SES.
+- **`BackgroundTasks`** for fire-and-forget in-request work — primarily sending email after a commit. Example: invitation creation commits, the response returns, then Resend is called from a background task so the user doesn't wait on the network round-trip to the email provider.
 - **APScheduler** `AsyncIOScheduler` inside the FastAPI process for periodic jobs:
 
 | Job | Cadence |
@@ -1022,7 +1022,7 @@ Append-only `audit_log` table capturing auth-sensitive events (login success/fai
 
 ### 12.5 Encryption (ADR 085)
 
-- **In transit**: TLS 1.3 via Let's Encrypt. HSTS preload.
+- **In transit**: TLS 1.3 — Cloudflare edge (public) + Cloudflare Origin CA cert (edge↔origin, Full strict). HSTS preload.
 - **At rest**: EBS default encryption (AWS-managed KMS key); S3 SSE-S3 on the backup bucket.
 - **Passwords**: Argon2id hashes only; plaintext never logged.
 
@@ -1138,7 +1138,7 @@ make dev
 | `api` | FastAPI + `uvicorn --reload`, source bind-mounted for hot reload |
 | `web` | Vite dev server with HMR, source bind-mounted |
 | `db` | PostgreSQL 16 with a named volume for persistence across restarts |
-| `mailhog` | SMTP sink on `:1025`, web UI on `:8025` — stands in for SES |
+| `mailhog` | SMTP sink on `:1025`, web UI on `:8025` — stands in for Resend |
 
 ### 15.2 Makefile targets
 
