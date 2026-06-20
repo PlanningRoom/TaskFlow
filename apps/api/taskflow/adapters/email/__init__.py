@@ -35,10 +35,10 @@ def render(template: str, /, **ctx: object) -> tuple[str, str]:
 def get_email_sender() -> EmailSender:
     global _sender
     if _sender is None:
-        if settings.email_backend == "ses":
-            from taskflow.adapters.email.ses import SesEmailSender
+        if settings.email_backend == "resend":
+            from taskflow.adapters.email.resend import ResendEmailSender
 
-            _sender = SesEmailSender()
+            _sender = ResendEmailSender()
         else:
             from taskflow.adapters.email.smtp import SmtpEmailSender
 

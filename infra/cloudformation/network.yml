@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  TaskFlow network stack (TDD §5.1). A minimal single-AZ public VPC for the
+  one-host deployment: VPC, public subnet, internet gateway, route table, and
+  the instance security group (80/443 from the internet; 22 retained for
+  break-glass SSH — day-to-day shell access is via SSM Session Manager).
+
+Parameters:
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: CIDR block for the VPC.
+  PublicSubnetCidr:
+    Type: String
+    Default: 10.0.1.0/24
+    Description: CIDR block for the public subnet.
+  SshIngressCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: >-
+      CIDR allowed to reach port 22 (break-glass only; prefer SSM Session
+      Manager). Narrow this to an operator IP in production.
+
+Resources:
+  Vpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: taskflow
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: taskflow
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref Vpc
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref Vpc
+      CidrBlock: !Ref PublicSubnetCidr
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: taskflow-public
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref Vpc
+      Tags:
+        - Key: Name
+          Value: taskflow-public
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet
+
+  InstanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: TaskFlow origin host - HTTP/HTTPS from the internet (behind Cloudflare), SSH break-glass.
+      VpcId: !Ref Vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+          Description: HTTP (Cloudflare edge to origin; serves the redirect to https)
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+          Description: HTTPS (Cloudflare edge to origin, Full strict)
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SshIngressCidr
+          Description: SSH break-glass (prefer SSM Session Manager)
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+          Description: All outbound (ECR, SSM, S3, CloudWatch, Resend)
+      Tags:
+        - Key: Name
+          Value: taskflow
+
+Outputs:
+  VpcId:
+    Value: !Ref Vpc
+    Export:
+      Name: taskflow-network-VpcId
+  PublicSubnetId:
+    Value: !Ref PublicSubnet
+    Export:
+      Name: taskflow-network-PublicSubnetId
+  InstanceSecurityGroupId:
+    Value: !GetAtt InstanceSecurityGroup.GroupId
+    Export:
+      Name: taskflow-network-InstanceSecurityGroupId

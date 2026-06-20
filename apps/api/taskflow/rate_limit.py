@@ -97,7 +97,7 @@ def workspace_key(request: Request) -> str:
     return f"ip:{_client_ip(request)}"
 
 
-limiter = Limiter(key_func=ip_key, default_limits=[])
+limiter = Limiter(key_func=ip_key, default_limits=[], enabled=settings.rate_limit_enabled)
 
 
 def _retry_after_seconds(exc: RateLimitExceeded) -> int | None:

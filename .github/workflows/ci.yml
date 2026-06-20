@@ -184,19 +184,106 @@ jobs:
 
       - name: Validate nginx.conf
         run: |
-          # Production config references Let's Encrypt cert paths and the
-          # docker-compose service names `api`/`web` that don't resolve on the
-          # runner. Substitute snake-oil certs and a loopback host so `nginx -t`
-          # can complete cert/upstream resolution and exercise the rest of the
-          # config. Prod parity is enforced in Phase I2 against the real image.
+          # Production config references the Cloudflare Origin CA cert paths
+          # (ADR 085) and the docker-compose service names `api`/`web` that
+          # don't resolve on the runner. Substitute snake-oil certs and a
+          # loopback host so `nginx -t` can complete cert/upstream resolution
+          # and exercise the rest of the config.
           mkdir -p /tmp/nginx-test
           sed \
-            -e 's|/etc/letsencrypt/live/taskflow/fullchain.pem|/etc/ssl/certs/ssl-cert-snakeoil.pem|' \
-            -e 's|/etc/letsencrypt/live/taskflow/privkey.pem|/etc/ssl/private/ssl-cert-snakeoil.key|' \
+            -e 's|/etc/nginx/certs/origin.pem|/etc/ssl/certs/ssl-cert-snakeoil.pem|' \
+            -e 's|/etc/nginx/certs/origin.key|/etc/ssl/private/ssl-cert-snakeoil.key|' \
             -e 's|server api:8000;|server 127.0.0.1:8000;|' \
             -e 's|server web:80;|server 127.0.0.1:80;|' \
             infra/nginx/nginx.conf > /tmp/nginx-test/nginx.conf
           sudo nginx -t -c /tmp/nginx-test/nginx.conf
+
+  cfn-lint:
+    name: cfn-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install cfn-lint
+        run: pip install cfn-lint
+
+      - name: Lint CloudFormation templates
+        run: cfn-lint infra/cloudformation/*.yml
+
+  e2e:
+    name: E2E (Playwright)
+    runs-on: ubuntu-latest
+    # Phase I1 (ADR 080 / TDD §16.3): drive the six product journeys against a
+    # real, seeded `docker compose up` stack. Target wall-clock < 15 minutes.
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.17'
+          cache: pnpm
+
+      - name: Install JS deps
+        run: pnpm install --frozen-lockfile || pnpm install
+
+      - name: Install Playwright browser
+        run: pnpm --filter @taskflow/e2e exec playwright install --with-deps chromium
+
+      - name: Provision .env.local
+        # docker-compose services read env from .env.local (see docker-compose.yml).
+        run: cp .env.example .env.local
+
+      - name: Boot the stack
+        run: docker compose up -d --build
+
+      - name: Wait for the API and web to come up
+        # The api runs migrations on startup; the web container does a cold
+        # `pnpm install` before Vite serves — allow a generous ceiling.
+        run: |
+          for i in $(seq 1 90); do
+            curl -fsS http://localhost:8000/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS http://localhost:8000/health
+          for i in $(seq 1 90); do
+            curl -fsS http://localhost:5173 >/dev/null 2>&1 && break
+            sleep 2
+          done
+          curl -fsS http://localhost:5173 >/dev/null
+
+      - name: Seed the demo workspace
+        run: docker compose run --rm api python -m taskflow.scripts.seed
+
+      - name: Run Playwright journeys
+        run: pnpm --filter @taskflow/e2e exec playwright test
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report
+          retention-days: 7
+
+      - name: Dump stack logs
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Tear down the stack
+        if: always()
+        run: docker compose down -v
 
   openapi-drift:
     name: OpenAPI drift

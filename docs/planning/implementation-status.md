@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
-**Last Updated:** 2026-06-14
-**Current Phase:** Part H complete (H2–H5 landed — see Notes 2026-06-14); Part I — E2E, Infrastructure, Deployment next (I1 End-to-End Test Suite)
+**Last Updated:** 2026-06-20
+**Current Phase:** Part I in progress — I1 + I2 complete (see Notes 2026-06-20); I3 (CD Pipeline — `deploy.yml`) next
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -55,8 +55,8 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | F | Frontend Foundation | 4 | 4 | 0 | 0 |
 | G | Frontend Screens | 8 | 8 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 5 | 0 | 0 |
-| I | E2E, Infra, Deploy | 6 | 0 | 0 | 0 |
-| **Total** | | **42** | **36** | **0** | **0** |
+| I | E2E, Infra, Deploy | 6 | 2 | 0 | 0 |
+| **Total** | | **42** | **38** | **0** | **0** |
 
 ---
 
@@ -447,30 +447,33 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 
 ### Part I — E2E, Infrastructure, Deployment
 
-#### Phase I1 — End-to-End Test Suite `[ ] Not started`
-- [ ] Playwright config + `@axe-core/playwright`
-- [ ] Journey 1: Sign-up → workspace → first project (Owner)
-- [ ] Journey 2: Accept invitation (new user)
-- [ ] Journey 3: Create task → drag to In Progress → comment with @mention → mark Done
-- [ ] Journey 4: Two contexts, real-time move
-- [ ] Journey 5: @mention notification real-time badge
-- [ ] Journey 6: Search, filter, empty states
-- [ ] CI `e2e` job under 15 minutes
+#### Phase I1 — End-to-End Test Suite `[x] Complete`
+- [x] Playwright config + `@axe-core/playwright` — new `@taskflow/e2e` workspace package (`e2e/`), serial (`workers: 1`) over the shared seeded workspace
+- [x] Journey 1: Sign-up → workspace → first project (Owner)
+- [x] Journey 2: Accept invitation (new user) — invite token recovered from the MailHog HTTP API (multipart/base64 body)
+- [x] Journey 3: Create task → drag to In Progress → comment with @mention → mark Done
+- [x] Journey 4: Two contexts, real-time move
+- [x] Journey 5: @mention notification real-time badge
+- [x] Journey 6: Search, filter, empty states
+- [x] CI `e2e` job under 15 minutes — boots the real `docker compose up` stack, seeds, runs Playwright; local suite runs in ~16s, two consecutive green runs
 
-#### Phase I2 — Infrastructure (CloudFormation) `[ ] Not started`
-- [ ] `network.yml`
-- [ ] `compute.yml` (with user-data)
-- [ ] `container-registry.yml` (lifecycle policies)
-- [ ] `storage.yml` (S3 backups + source maps)
-- [ ] `parameters.yml` (SSM SecureString placeholders, incl. `resend_api_key`)
-- [ ] `monitoring.yml` (log groups, metric filters, alarms, SNS)
-- [ ] `iam.yml` (OIDC + deploy role)
-- [ ] Swap the email adapter to **Resend** (HTTP API) — prod sender + `.env`/settings; dev MailHog unchanged (deferred from the 2026-06-14 provider change)
-- [ ] `infra/ec2/user-data.sh`
-- [ ] `docker-compose.prod.yml` with nginx + api + web + db (no certbot)
-- [ ] **Cloudflare** Origin CA cert installed + nginx cert paths updated; proxied zone at Full (strict); proxied `A` record + Resend SPF/DKIM/DMARC records added
-- [ ] `cfn-lint` clean in CI
-- [ ] *(No `dns.yml` / `email.yml` / ACM — DNS + email-auth are in Cloudflare, not CFN)*
+#### Phase I2 — Infrastructure (CloudFormation) `[x] Complete`
+
+**Scope note:** this environment has no AWS account, and the live apply is Phase I4. I2 = author every artifact + validate locally (`cfn-lint`, `nginx -t`, pytest) + add the CI `cfn-lint` gate + the deploy runbook. Account-specifics (domain, region, GitHub org/repo) are CloudFormation **parameters** with defaults.
+
+- [x] `network.yml` — VPC, public subnet, IGW + route table, instance SG (80/443 from internet, 22 break-glass)
+- [x] `compute.yml` (with user-data) — `t4g.small` arm64 from the SSM AL2023 AMI, Elastic IP, encrypted gp3 root, embedded bootstrap; **host alarms** (StatusCheckFailed/mem/disk) live here (need InstanceId)
+- [x] `container-registry.yml` (lifecycle policies) — `taskflow/api` + `taskflow/web`, scan-on-push, keep-10/expire-untagged-7d
+- [x] `storage.yml` (S3 backups + source maps) — SSE-S3, backups versioned + 30-day expiry, BlockPublicAccess, `Retain`
+- [x] `parameters.yml` — manages the **KMS key** (`alias/taskflow-prod`) + policy; **CFN can't create SecureStrings**, so values are made out-of-band (runbook). Documents the 6 param names (incl. `resend_api_key`, `postgres_password`)
+- [x] `monitoring.yml` (log groups, metric filters, alarms, SNS) — 3 log groups (30d), the 5 metric filters (matched to **actual** structlog output: lowercase `level`, numeric `status`, `event`), SNS `taskflow-alerts`, the 3 application alarms
+- [x] `iam.yml` (OIDC + deploy role) — GitHub OIDC provider (conditional), `taskflow-deploy-role` (ECR/CFN/SSM), EC2 instance role + profile (SSM read + KMS decrypt, ECR pull, S3 backup write, CW Logs)
+- [x] Swap the email adapter to **Resend** (HTTP API via httpx) — `adapters/email/resend.py`, factory + settings (`email_backend: smtp|resend`, `resend_api_key`), `.env.example`; **SES removed** (`ses.py` + its test deleted); `aioboto3` **kept** (still used by the S3 backup job in `services/cleanup.py`, whose region setting was renamed `ses_region` → `aws_region`). Dev MailHog unchanged.
+- [x] `infra/ec2/user-data.sh` — self-discovering bootstrap (Docker + compose plugin + CW Agent, SSM → `/opt/taskflow/.env`, ECR login, compose up); embedded verbatim in `compute.yml`
+- [x] `docker-compose.prod.yml` with nginx + api + web + db (no certbot) — Origin CA cert mount, ECR image refs, `awslogs` log driver, healthchecks, named db volume
+- [x] **Cloudflare** Origin CA cert + nginx cert paths updated (`/etc/nginx/certs/origin.{pem,key}`, ACME block removed); zone Full (strict), proxied `A` record + Resend SPF/DKIM/DMARC — **documented in `docs/runbooks/deploy.md`** for the I4 operator (dashboard steps, not code)
+- [x] `cfn-lint` clean in CI — new `cfn-lint` job in `ci.yml` + `make cfn-lint`; all 7 templates pass
+- [x] *(No `dns.yml` / `email.yml` / ACM — DNS + email-auth are in Cloudflare, not CFN)*
 
 #### Phase I3 — CD Pipeline `[ ] Not started`
 - [ ] `.github/workflows/deploy.yml`
@@ -523,6 +526,46 @@ These were surfaced during plan validation (§6.4 of the implementation plan). R
 ## Notes
 
 Use this section as a running log of decisions, blockers, or context that should persist across sessions.
+
+### 2026-06-20 — Phase I2 complete (Infrastructure / CloudFormation + Resend & Cloudflare swap)
+
+Authored the full production stack and landed the two deferred 2026-06-14 changes (Cloudflare Origin-CA TLS; SES → Resend). **Validated locally:** `cfn-lint` clean on all 7 templates, `nginx -t` passes the rewritten config, email unit tests + ruff/mypy green, `docker compose -f docker-compose.prod.yml config -q` ok, I1 e2e suite still green.
+
+**Scope boundary:** no AWS account in this environment and the live apply is **I4**, so I2 delivered *authored + locally-validated* artifacts + the CI `cfn-lint` gate + `docs/runbooks/deploy.md`. The `aws cloudformation deploy`, SSM secret population, and Cloudflare/Resend dashboard steps are the runbook's I4 operator actions. All account-specifics are CFN **parameters** with defaults (region us-east-1; `GitHubOrg=PlanningRoom`, `GitHubRepo=TaskFlow`).
+
+**CloudFormation** (`infra/cloudformation/`, 7 stacks; deploy order network → iam → container-registry → storage → parameters → monitoring → compute; cross-stack via `Export`/`ImportValue`). Decisions worth noting:
+- **SecureString limitation (real AWS constraint):** CFN cannot create SecureString SSM parameters. `parameters.yml` therefore owns the **KMS key + policy** (`alias/taskflow-prod`, instance-role decrypt) and documents the names; values are `aws ssm put-parameter --type SecureString` out-of-band (runbook). This matches TDD §5.1 ("stack manages names and KMS policy; values set out-of-band").
+- **Host alarms in `compute.yml`, app alarms in `monitoring.yml`:** the EC2/CWAgent alarms (StatusCheckFailed, mem, disk) need the InstanceId, so they live with the instance and publish to the SNS topic imported from `monitoring`.
+- **Metric filters matched to reality, not TDD prose.** Structlog emits **lowercase** `level` and a numeric `status`, so `error_count` keys off `{ $.level = "error" }` (TDD §13.2 wrote "ERROR"). I5 re-verifies against live lines — these now match.
+- **user-data self-discovers** region/account from IMDS so the script is embedded verbatim in `compute.yml` (no CFN `!Sub` escaping of shell `${}`); the standalone `infra/ec2/user-data.sh` is the canonical copy.
+
+**Email SES → Resend:** new `adapters/email/resend.py` (httpx POST to `api.resend.com/emails`, mirrors the SES adapter's structured logging). Factory + settings now `email_backend: Literal["smtp","resend"]` + `resend_api_key`. **SES fully removed** (`ses.py` + its unit test deleted). **`aioboto3` kept** — it's still used by the S3 pg_dump backup job (`services/cleanup.py`); its region knob was renamed `ses_region` → `aws_region` (reads `AWS_REGION`). `.env.example` drops `SES_REGION`/`CERTBOT_EMAIL`, adds `RESEND_API_KEY`/`EMAIL_FROM_ADDRESS`.
+
+**Pre-existing (not introduced here):** `mypy` reports 2 `cookie_secure: bool | None` errors in `api/v1/auth.py` — main CI is already red on these (see the `main-ci-red-python` note); untouched by I2.
+
+**Carried to I3/I4:** `deploy.yml` (OIDC build/push/deploy/migrate/roll); the live stack apply, SSM secret values, and Cloudflare/Resend dashboard config per the runbook; subscribe + synthesize alarms (I5).
+
+### 2026-06-20 — Phase I1 complete (End-to-End Test Suite)
+
+All six Playwright journeys (ADR 080 / TDD §16.3) pass against the real, seeded `docker compose up` stack — **6/6 green, ~16s, stable across two consecutive runs**. Browser drives the Vite dev server (:5173) same-origin; cookies + CSRF flow exactly as in prod.
+
+**Built** — a dedicated **`@taskflow/e2e`** workspace package (kept separate from `apps/web` to avoid the Vitest↔Playwright `test`/`expect` global collision):
+- `playwright.config.ts` (chromium, `baseURL` env-overridable, **`workers: 1`** — the journeys share the one seeded "Aurora Studio" workspace and the real-time/notification assertions are cross-context-stateful), helpers (`auth`, `board`, `dnd`, `axe`, `mailhog`, `notifications`, `data`), and `tests/01..06`.
+- `make e2e-up` (compose up → wait for `/health` + `:5173` → seed) + `make e2e`; CI `e2e` job added to `ci.yml` (boots compose, seeds, runs Playwright, uploads the report on failure, `down -v` teardown; `timeout-minutes: 20`).
+- The package script is named `e2e` (not `test`) so `turbo run test` / `pnpm test` never launch Playwright without a stack.
+
+**Three product/infra changes were needed to make `docker compose up` genuinely E2E-able** (the team's normal workflow runs Vite on the host, so these container paths were never exercised):
+1. **Vite dev proxy is now target-configurable** (`apps/web/vite.config.ts` reads `VITE_PROXY_TARGET`, default `http://localhost:8000`). Inside compose the SPA's `/api` + `/ws` must reach `api:8000`, not `localhost` — the `web` service now sets `VITE_PROXY_TARGET=http://api:8000`. Host dev is unchanged. Without this every API call 502'd.
+2. **Global rate-limit toggle** — added `settings.rate_limit_enabled` (default **True**; wired into the slowapi `Limiter`). The compose `api` service sets `RATE_LIMIT_ENABLED=false` so the suite's repeated logins/signups don't 429. **Production keeps it on** (standalone `docker-compose.prod.yml`); the E1 rate-limit integration tests force `limiter.enabled = True` in a fixture, so they're unaffected (re-verified: 5/5 pass).
+3. Nothing else in app behaviour changed.
+
+**Test-suite deviations / decisions (intentional):**
+- **axe excludes the "use of colour" rules** (`color-contrast`, `link-in-text-block`[`-style`]) — these are exactly what **H4 routed to the manual a11y checklist** (`apps/web/docs/a11y-manual-checklist.md`), and mirror `apps/web/src/test/axe.ts` disabling `color-contrast` in jsdom. Excluded by **filtering results** (not `disableRules`, which throws on the experimental `-style` id). Every structural rule (roles/names/labels/landmarks/ARIA/focus) stays enforced on each visited page.
+- **dnd-kit drag** uses a manual pointer helper (press → nudge past the 5px activation → glide in steps → settle → release); Playwright's high-level `dragTo` doesn't trip the PointerSensor.
+- **MailHog token extraction** decodes multipart **base64** part bodies (the invite email is base64 transfer-encoded), not just quoted-printable.
+- Journeys use unique emails (J1/J2) and self-created tasks (J3) so local reruns against a persisted DB stay green; CI is fresh each run.
+
+**Carried forward to I2 (unchanged):** the Resend/Cloudflare prod-adapter swaps; the manual a11y + (now automated) two-browser realtime checks. The live two-browser realtime check that H1/H4 left manual is **now covered automatically** by Journeys 4 & 5.
 
 ### 2026-06-14 — Infra decision change: Cloudflare DNS + Resend email (pre-Part I)
 

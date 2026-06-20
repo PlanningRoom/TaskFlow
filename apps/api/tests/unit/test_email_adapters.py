@@ -1,14 +1,14 @@
-"""Phase D2 — SMTP and SES adapter unit tests."""
+"""SMTP and Resend adapter unit tests (Phase D2; SES → Resend swap in I2)."""
 
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
 from taskflow.adapters.email.base import EmailMessage
-from taskflow.adapters.email.ses import SesEmailSender
+from taskflow.adapters.email.resend import ResendEmailSender
 from taskflow.adapters.email.smtp import SmtpEmailSender
 
 
@@ -46,27 +46,30 @@ async def test_smtp_sender_invokes_aiosmtplib(monkeypatch: pytest.MonkeyPatch) -
 
 
 @pytest.mark.asyncio
-async def test_ses_sender_invokes_send_email(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake_client = MagicMock()
-    fake_client.send_email = AsyncMock()
+async def test_resend_sender_invokes_httpx(monkeypatch: pytest.MonkeyPatch) -> None:
+    from taskflow.settings import settings
 
-    class _ClientCtx:
-        async def __aenter__(self) -> MagicMock:
-            return fake_client
+    monkeypatch.setattr(settings, "resend_api_key", "re_test_key", raising=False)
+
+    class _FakeResponse:
+        def raise_for_status(self) -> None:
+            return None
+
+    fake_post = AsyncMock(return_value=_FakeResponse())
+
+    class _FakeClient:
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            self.post = fake_post
+
+        async def __aenter__(self) -> _FakeClient:
+            return self
 
         async def __aexit__(self, *args: Any) -> None:
             return None
 
-    class _FakeSession:
-        def client(self, *args: Any, **kwargs: Any) -> _ClientCtx:
-            return _ClientCtx()
+    monkeypatch.setattr("taskflow.adapters.email.resend.httpx.AsyncClient", _FakeClient)
 
-    monkeypatch.setattr(
-        "taskflow.adapters.email.ses.aioboto3.Session",
-        lambda: _FakeSession(),
-    )
-
-    sender = SesEmailSender()
+    sender = ResendEmailSender()
     await sender.send(
         EmailMessage(
             to="recipient@example.com",
@@ -77,9 +80,15 @@ async def test_ses_sender_invokes_send_email(monkeypatch: pytest.MonkeyPatch) ->
         )
     )
 
-    fake_client.send_email.assert_awaited_once()
-    kwargs = fake_client.send_email.await_args.kwargs
-    assert kwargs["Destination"] == {"ToAddresses": ["recipient@example.com"]}
-    assert kwargs["Message"]["Subject"]["Data"] == "Hello"
-    assert kwargs["Message"]["Body"]["Text"]["Data"] == "text body"
-    assert kwargs["Message"]["Body"]["Html"]["Data"] == "<p>html body</p>"
+    fake_post.assert_awaited_once()
+    call = fake_post.await_args
+    assert call is not None
+    args, kwargs = call.args, call.kwargs
+    assert args[0] == "https://api.resend.com/emails"
+    assert kwargs["headers"]["Authorization"] == "Bearer re_test_key"
+    body = kwargs["json"]
+    assert body["to"] == ["recipient@example.com"]
+    assert body["subject"] == "Hello"
+    assert body["text"] == "text body"
+    assert body["html"] == "<p>html body</p>"
+    assert body["from"] == "TaskFlow <no-reply@taskflow.local>"

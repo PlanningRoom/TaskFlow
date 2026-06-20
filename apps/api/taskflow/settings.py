@@ -35,6 +35,10 @@ class Settings(BaseSettings):
     realtime_enabled: bool = True
 
     # Rate limits (ADR 052). slowapi-format strings; parsed by the limiter.
+    # `rate_limit_enabled` is the global on/off — default on; the local
+    # docker-compose dev/E2E stack turns it off so repeated logins/signups in
+    # the acceptance suite don't trip the limiter. Production leaves it on.
+    rate_limit_enabled: bool = True
     rate_limit_login_per_ip: str = "5/minute"
     rate_limit_login_per_email: str = "10/minute"
     rate_limit_signup_per_ip: str = "3/hour"
@@ -43,19 +47,24 @@ class Settings(BaseSettings):
     rate_limit_invites_per_workspace: str = "20/hour"
     rate_limit_authenticated_default: str = "120/minute"
 
-    # Email (ADR 067). `smtp` → MailHog/SMTP in dev; `ses` → Amazon SES in prod.
-    email_backend: Literal["smtp", "ses"] = "smtp"
+    # Email (ADR 067). `smtp` → MailHog/SMTP in dev; `resend` → Resend HTTP API in
+    # prod (swapped from SES in Phase I2). `resend_api_key` is hydrated at boot
+    # from the SSM SecureString `/taskflow/prod/resend_api_key` (ADR 073).
+    email_backend: Literal["smtp", "resend"] = "smtp"
     email_from: str = "no-reply@taskflow.local"
     email_from_name: str = "TaskFlow"
     smtp_host: str = "mailhog"
     smtp_port: int = 1025
     smtp_username: str | None = None
     smtp_password: str | None = None
-    ses_region: str = "us-east-1"
+    resend_api_key: str | None = None
 
     # Background jobs / backups (ADR 069, 074).
     scheduler_enabled: bool = True
     s3_backups_bucket: str | None = None
+    # AWS region for the S3 backup client (and any future AWS SDK calls). Hydrated
+    # from `AWS_REGION` in prod; us-east-1 by default.
+    aws_region: str = "us-east-1"
 
     @property
     def cors_origins_list(self) -> list[str]:

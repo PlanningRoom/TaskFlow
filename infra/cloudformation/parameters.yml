@@ -1,0 +1,62 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  TaskFlow parameters stack (TDD §5.1; ADR 073). Manages the KMS key + policy
+  that encrypts the runtime SecureString parameters under /taskflow/prod/*.
+
+  NOTE: CloudFormation cannot create `SecureString` SSM parameters (AWS::SSM::
+  Parameter supports only String / StringList). So the secret *values* are
+  created out-of-band with the AWS CLI against this stack's CMK — see
+  docs/runbooks/deploy.md. This stack owns the encryption key and records the
+  expected parameter names; I4 populates them. The instance role (iam stack)
+  is granted decrypt here.
+
+Resources:
+  SecretsKey:
+    Type: AWS::KMS::Key
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      Description: TaskFlow runtime SecureString encryption key (/taskflow/prod/*).
+      EnableKeyRotation: true
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AccountAdmin
+            Effect: Allow
+            Principal:
+              AWS: !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:root
+            Action: kms:*
+            Resource: "*"
+          - Sid: InstanceDecrypt
+            Effect: Allow
+            Principal:
+              AWS: !ImportValue taskflow-iam-InstanceRoleArn
+            Action:
+              - kms:Decrypt
+              - kms:DescribeKey
+            Resource: "*"
+
+  SecretsKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/taskflow-prod
+      TargetKeyId: !Ref SecretsKey
+
+Outputs:
+  SecretsKeyId:
+    Value: !Ref SecretsKey
+    Export:
+      Name: taskflow-parameters-SecretsKeyId
+  SecretsKeyAlias:
+    Value: !Ref SecretsKeyAlias
+    Export:
+      Name: taskflow-parameters-SecretsKeyAlias
+  ExpectedParameterNames:
+    Description: >-
+      SecureStrings to create out-of-band under this key (ADR 073). See the
+      runbook for the `aws ssm put-parameter --type SecureString --key-id
+      alias/taskflow-prod` commands.
+    Value: >-
+      /taskflow/prod/database_url, /taskflow/prod/postgres_password,
+      /taskflow/prod/session_secret, /taskflow/prod/csrf_secret,
+      /taskflow/prod/resend_api_key, /taskflow/prod/email_from_address

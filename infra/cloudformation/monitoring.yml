@@ -1,0 +1,182 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  TaskFlow monitoring stack (TDD §13). CloudWatch log groups for the three
+  containers, metric filters that lift counters out of the structured JSON logs,
+  the `taskflow-alerts` SNS topic, and the application-metric alarms. Host/EC2
+  alarms (status check, memory, disk) live in the compute stack where the
+  InstanceId is known; they publish to this topic.
+
+  Metric-filter selectors match the *actual* structlog output (lowercase
+  `level`, numeric `status`, `event` message key) — not the upper-cased
+  placeholders in TDD §13.2 prose. Phase I5 re-verifies against live lines.
+
+Parameters:
+  AlertEmail:
+    Type: String
+    Default: ""
+    Description: Operator email subscribed to taskflow-alerts (leave blank to subscribe in I5).
+
+Conditions:
+  HasAlertEmail: !Not [!Equals [!Ref AlertEmail, ""]]
+
+Resources:
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: /taskflow/prod/api
+      RetentionInDays: 30
+
+  WebLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: /taskflow/prod/web
+      RetentionInDays: 30
+
+  DbLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: /taskflow/prod/db
+      RetentionInDays: 30
+
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: taskflow-alerts
+      DisplayName: TaskFlow alerts
+
+  AlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Condition: HasAlertEmail
+    Properties:
+      TopicArn: !Ref AlertsTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # ── Metric filters (TDD §13.2), namespace TaskFlow/prod ────────────────────
+  FiveXxMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterName: 5xx_count
+      FilterPattern: "{ $.status >= 500 }"
+      MetricTransformations:
+        - MetricNamespace: TaskFlow/prod
+          MetricName: 5xx_count
+          MetricValue: "1"
+          DefaultValue: 0
+
+  FourXxMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterName: 4xx_count
+      FilterPattern: "{ $.status >= 400 && $.status < 500 }"
+      MetricTransformations:
+        - MetricNamespace: TaskFlow/prod
+          MetricName: 4xx_count
+          MetricValue: "1"
+          DefaultValue: 0
+
+  ErrorMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterName: error_count
+      FilterPattern: '{ $.level = "error" }'
+      MetricTransformations:
+        - MetricNamespace: TaskFlow/prod
+          MetricName: error_count
+          MetricValue: "1"
+          DefaultValue: 0
+
+  LoginFailureMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterName: login_failure_count
+      FilterPattern: '{ $.event = "auth.login.failure" }'
+      MetricTransformations:
+        - MetricNamespace: TaskFlow/prod
+          MetricName: login_failure_count
+          MetricValue: "1"
+          DefaultValue: 0
+
+  WebSocketConnectionsMetricFilter:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref ApiLogGroup
+      FilterName: websocket_connections
+      FilterPattern: '{ $.event = "websocket_connections" }'
+      MetricTransformations:
+        - MetricNamespace: TaskFlow/prod
+          MetricName: websocket_connections
+          MetricValue: $.value
+
+  # ── Application alarms (TDD §13.3) → SNS ───────────────────────────────────
+  ErrorCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: taskflow-error_count-high
+      AlarmDescription: ERROR-level log lines ≥ 5 in 5 minutes.
+      Namespace: TaskFlow/prod
+      MetricName: error_count
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 5
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertsTopic
+      OKActions:
+        - !Ref AlertsTopic
+
+  FiveXxAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: taskflow-5xx_count-high
+      AlarmDescription: 5xx responses ≥ 10 in 5 minutes.
+      Namespace: TaskFlow/prod
+      MetricName: 5xx_count
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 10
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertsTopic
+      OKActions:
+        - !Ref AlertsTopic
+
+  LoginFailureAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: taskflow-login_failure_count-high
+      AlarmDescription: Login failures ≥ 50 in 5 minutes (brute-force signal).
+      Namespace: TaskFlow/prod
+      MetricName: login_failure_count
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 50
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertsTopic
+
+Outputs:
+  AlertsTopicArn:
+    Value: !Ref AlertsTopic
+    Export:
+      Name: taskflow-monitoring-AlertsTopicArn
+  ApiLogGroupName:
+    Value: !Ref ApiLogGroup
+    Export:
+      Name: taskflow-monitoring-ApiLogGroupName

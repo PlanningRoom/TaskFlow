@@ -31,6 +31,9 @@ services:
       DATABASE_URL: postgresql+asyncpg://taskflow:taskflow@db:5432/taskflow
       SMTP_HOST: mailhog
       SMTP_PORT: "1025"
+      # Local dev + E2E stack: relax the auth rate limiter so the acceptance
+      # suite's repeated logins/signups don't 429. Production keeps it enabled.
+      RATE_LIMIT_ENABLED: "false"
     depends_on:
       db:
         condition: service_healthy
@@ -49,6 +52,10 @@ services:
       - .env.local
     environment:
       VITE_API_BASE_URL: http://localhost:8000/api/v1
+      # Inside the compose network the API is reachable as `api:8000`, not
+      # `localhost` — point Vite's dev proxy at it so the SPA's `/api` + `/ws`
+      # calls resolve (see apps/web/vite.config.ts).
+      VITE_PROXY_TARGET: http://api:8000
     volumes:
       - .:/app
       - /app/node_modules

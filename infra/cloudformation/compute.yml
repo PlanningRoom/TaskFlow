@@ -1,0 +1,220 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >-
+  TaskFlow compute stack (TDD §5.2-§5.3). The single t4g.small (arm64) origin
+  host with an Elastic IP, encrypted gp3 root volume, the instance profile from
+  the iam stack, and a UserData bootstrap. Also the host/EC2 alarms (status
+  check, memory, disk) that need the InstanceId — they publish to the SNS topic
+  from the monitoring stack.
+
+  UserData embeds infra/ec2/user-data.sh verbatim (keep in sync).
+
+Parameters:
+  InstanceType:
+    Type: String
+    Default: t4g.small
+    Description: arm64 instance type (TDD §5.3 capacity plan assumes t4g.small / 2 GB).
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-arm64
+    Description: Latest Amazon Linux 2023 arm64 AMI (resolved from the SSM public parameter).
+  RootVolumeSizeGb:
+    Type: Number
+    Default: 20
+    Description: Root EBS volume size in GiB.
+
+Resources:
+  ElasticIp:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: taskflow
+
+  Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref AmiId
+      IamInstanceProfile: !ImportValue taskflow-iam-InstanceProfileName
+      SubnetId: !ImportValue taskflow-network-PublicSubnetId
+      SecurityGroupIds:
+        - !ImportValue taskflow-network-InstanceSecurityGroupId
+      BlockDeviceMappings:
+        - DeviceName: /dev/xvda
+          Ebs:
+            VolumeSize: !Ref RootVolumeSizeGb
+            VolumeType: gp3
+            Encrypted: true
+            DeleteOnTermination: true
+      Tags:
+        - Key: Name
+          Value: taskflow
+      UserData:
+        Fn::Base64: |
+          #!/usr/bin/env bash
+          # TaskFlow EC2 bootstrap (TDD §5.2; ADR 073). Embedded copy of
+          # infra/ec2/user-data.sh — keep in sync.
+          set -euo pipefail
+          exec > >(tee -a /var/log/taskflow-bootstrap.log) 2>&1
+          echo "[taskflow] bootstrap starting $(date -u +%FT%TZ)"
+
+          APP_DIR=/opt/taskflow
+          CERT_DIR=/etc/taskflow/certs
+          mkdir -p "${APP_DIR}" "${CERT_DIR}"
+
+          TOKEN="$(curl -sS -X PUT 'http://169.254.169.254/latest/api/token' \
+            -H 'X-aws-ec2-metadata-token-ttl-seconds: 600')"
+          imds() { curl -sS -H "X-aws-ec2-metadata-token: ${TOKEN}" "http://169.254.169.254/latest/meta-data/$1"; }
+          REGION="$(imds placement/region)"
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text --region "${REGION}")"
+          ECR_REGISTRY="${ACCOUNT_ID}.dkr.ecr.${REGION}.amazonaws.com"
+          echo "[taskflow] region=${REGION} account=${ACCOUNT_ID}"
+
+          dnf install -y docker
+          systemctl enable --now docker
+          COMPOSE_PLUGIN_DIR=/usr/libexec/docker/cli-plugins
+          mkdir -p "${COMPOSE_PLUGIN_DIR}"
+          if ! docker compose version >/dev/null 2>&1; then
+            curl -fsSL \
+              "https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-aarch64" \
+              -o "${COMPOSE_PLUGIN_DIR}/docker-compose"
+            chmod +x "${COMPOSE_PLUGIN_DIR}/docker-compose"
+          fi
+
+          dnf install -y amazon-cloudwatch-agent
+          cat > /opt/aws/amazon-cloudwatch-agent/etc/taskflow-agent.json <<'JSON'
+          {
+            "agent": { "metrics_collection_interval": 60 },
+            "metrics": {
+              "namespace": "CWAgent",
+              "append_dimensions": { "InstanceId": "${aws:InstanceId}" },
+              "aggregation_dimensions": [["InstanceId"]],
+              "metrics_collected": {
+                "mem": { "measurement": ["mem_used_percent"] },
+                "disk": { "measurement": ["disk_used_percent"], "resources": ["/"] },
+                "cpu": { "measurement": ["cpu_usage_active", "cpu_usage_iowait"], "totalcpu": true }
+              }
+            }
+          }
+          JSON
+          /opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+            -a fetch-config -m ec2 -s \
+            -c file:/opt/aws/amazon-cloudwatch-agent/etc/taskflow-agent.json
+
+          write_env() {
+            local env_file="${APP_DIR}/.env"
+            : > "${env_file}"
+            chmod 600 "${env_file}"
+            aws ssm get-parameters-by-path \
+              --path /taskflow/prod --with-decryption --region "${REGION}" \
+              --query 'Parameters[*].[Name,Value]' --output text |
+              while IFS=$'\t' read -r name value; do
+                key="$(basename "${name}" | tr '[:lower:]' '[:upper:]')"
+                echo "${key}=${value}" >> "${env_file}"
+              done
+            {
+              echo "APP_ENV=production"
+              echo "EMAIL_BACKEND=resend"
+              echo "AWS_REGION=${REGION}"
+              echo "ECR_REGISTRY=${ECR_REGISTRY}"
+              echo "S3_BACKUPS_BUCKET=taskflow-backups-${ACCOUNT_ID}-${REGION}"
+              echo "S3_SOURCE_MAPS_BUCKET=taskflow-source-maps-${ACCOUNT_ID}-${REGION}"
+            } >> "${env_file}"
+            local from_addr
+            from_addr="$(awk -F= '/^EMAIL_FROM_ADDRESS=/{sub(/^EMAIL_FROM_ADDRESS=/, ""); print; exit}' "${env_file}")"
+            if [[ -n "${from_addr}" ]]; then
+              echo "EMAIL_FROM=${from_addr}" >> "${env_file}"
+            fi
+          }
+          write_env
+
+          aws ecr get-login-password --region "${REGION}" |
+            docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+
+          if [[ -f "${APP_DIR}/docker-compose.prod.yml" && -f "${CERT_DIR}/origin.pem" ]]; then
+            # shellcheck source=/dev/null
+            ( set -a; source "${APP_DIR}/.env"; set +a
+              docker compose -f "${APP_DIR}/docker-compose.prod.yml" pull
+              docker compose -f "${APP_DIR}/docker-compose.prod.yml" up -d --remove-orphans )
+            echo "[taskflow] stack started"
+          else
+            echo "[taskflow] host prepared; awaiting first deploy"
+          fi
+          echo "[taskflow] bootstrap finished $(date -u +%FT%TZ)"
+
+  ElasticIpAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt ElasticIp.AllocationId
+      InstanceId: !Ref Instance
+
+  StatusCheckAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: taskflow-ec2-status-check
+      AlarmDescription: EC2 status check failed ≥ 1 for 2 minutes.
+      Namespace: AWS/EC2
+      MetricName: StatusCheckFailed
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref Instance
+      Statistic: Maximum
+      Period: 60
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: breaching
+      AlarmActions:
+        - !ImportValue taskflow-monitoring-AlertsTopicArn
+      OKActions:
+        - !ImportValue taskflow-monitoring-AlertsTopicArn
+
+  MemoryAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: taskflow-mem-used-high
+      AlarmDescription: Memory used ≥ 85% for 10 minutes (CloudWatch Agent).
+      Namespace: CWAgent
+      MetricName: mem_used_percent
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref Instance
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 85
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !ImportValue taskflow-monitoring-AlertsTopicArn
+
+  DiskAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: taskflow-disk-used-high
+      AlarmDescription: Root disk used ≥ 80% for 10 minutes (CloudWatch Agent).
+      Namespace: CWAgent
+      MetricName: disk_used_percent
+      Dimensions:
+        - Name: InstanceId
+          Value: !Ref Instance
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !ImportValue taskflow-monitoring-AlertsTopicArn
+
+Outputs:
+  InstanceId:
+    Value: !Ref Instance
+    Export:
+      Name: taskflow-compute-InstanceId
+  PublicIp:
+    Description: Elastic IP — point the Cloudflare proxied A record here (I4).
+    Value: !Ref ElasticIp
+    Export:
+      Name: taskflow-compute-PublicIp

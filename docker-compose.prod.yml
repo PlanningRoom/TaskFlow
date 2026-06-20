@@ -1,7 +1,89 @@
-# Production topology placeholder. Filled out in Phase I2.
-# Will include: nginx (public entry, TLS via certbot), api, web (static via nginx),
-# db (Postgres 16 with persistent volume), and shared private networks.
+# TaskFlow production topology (TDD §5.2). Single host, four containers:
+# nginx (origin TLS via a Cloudflare Origin CA cert), api, web, db. No certbot —
+# the public edge cert is Cloudflare's and the origin cert is long-lived
+# (ADR 085). Image tags + secrets are interpolated from /opt/taskflow/.env,
+# which the EC2 bootstrap (infra/ec2/user-data.sh) hydrates from SSM at boot.
+#
+# Container stdout ships to CloudWatch Logs via the awslogs driver (TDD §13.1);
+# the log groups are created by the monitoring CloudFormation stack. nginx (the
+# public reverse proxy) shares the web tier's /taskflow/prod/web group.
+
 services:
-  placeholder:
-    image: alpine:3.20
-    command: ["true"]
+  nginx:
+    image: nginx:1.27-alpine
+    restart: always
+    depends_on:
+      - api
+      - web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./infra/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - /etc/taskflow/certs:/etc/nginx/certs:ro
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: "${AWS_REGION:-us-east-1}"
+        awslogs-create-group: "false"
+        awslogs-group: /taskflow/prod/web
+
+  api:
+    image: "${ECR_REGISTRY:-REPLACED_AT_DEPLOY}/taskflow/api:${IMAGE_TAG:-latest}"
+    restart: always
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: "${AWS_REGION:-us-east-1}"
+        awslogs-create-group: "false"
+        awslogs-group: /taskflow/prod/api
+
+  web:
+    image: "${ECR_REGISTRY:-REPLACED_AT_DEPLOY}/taskflow/web:${IMAGE_TAG:-latest}"
+    restart: always
+    expose:
+      - "80"
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: "${AWS_REGION:-us-east-1}"
+        awslogs-create-group: "false"
+        awslogs-group: /taskflow/prod/web
+
+  db:
+    image: postgres:16-alpine
+    restart: always
+    command: ["postgres", "-c", "shared_buffers=256MB"]
+    environment:
+      POSTGRES_USER: taskflow
+      POSTGRES_DB: taskflow
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-changeme}"
+    volumes:
+      - taskflow_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U taskflow -d taskflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: "${AWS_REGION:-us-east-1}"
+        awslogs-create-group: "false"
+        awslogs-group: /taskflow/prod/db
+
+volumes:
+  taskflow_db_data:

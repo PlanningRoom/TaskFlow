@@ -108,7 +108,7 @@ async def backup_database_to_s3() -> None:
 
         body = gzip.compress(stdout)
         session = aioboto3.Session()
-        async with session.client("s3", region_name=settings.ses_region) as s3:
+        async with session.client("s3", region_name=settings.aws_region) as s3:
             await s3.put_object(Bucket=bucket, Key=key, Body=body)
     except Exception as exc:
         logger.error(
