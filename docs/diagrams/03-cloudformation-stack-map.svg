@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="820" viewBox="0 0 1200 820">
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#64748b"/>
+    </marker>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#0f172a" flood-opacity="0.13"/>
+    </filter>
+  </defs>
+  <style>
+    text{font-family:'Inter','Segoe UI',Arial,sans-serif;}
+    .title{font-size:24px;font-weight:700;fill:#0f172a;}
+    .sub{font-size:13.5px;fill:#64748b;}
+    rect.card{filter:url(#sh);}
+    .nt{font-size:15px;font-weight:700;fill:#0f172a;}
+    .tag{font-size:11px;font-weight:600;fill:#b45309;}
+    .ns{font-size:11px;fill:#475569;}
+    .ed{fill:none;stroke:#f59e0b;stroke-width:1.6;stroke-dasharray:5 4;marker-end:url(#arrow);}
+    .el{font-size:10px;fill:#b45309;}
+    .foot{font-size:11.5px;fill:#64748b;}
+  </style>
+
+  <rect width="1200" height="820" fill="#f8fafc"/>
+  <text class="title" x="56" y="50">CloudFormation Stack Map  (Part I2)</text>
+  <text class="sub" x="56" y="74">infra/cloudformation/*.yml · composable stacks · TDD §5.1 · ADR 087 · cfn-lint gated in CI</text>
+
+  <!-- Row 1 -->
+  <!-- network -->
+  <rect class="card" x="56" y="118" width="262" height="206" rx="11" fill="#ffffff" stroke="#3b82f6" stroke-width="1.7"/>
+  <text class="tag" x="76" y="144" fill="#2563eb">network.yml</text>
+  <text class="nt" x="76" y="166">Networking</text>
+  <text class="ns" x="76" y="192">VPC</text>
+  <text class="ns" x="76" y="210">Public subnet</text>
+  <text class="ns" x="76" y="228">Internet gateway · route table</text>
+  <text class="ns" x="76" y="246">Security group</text>
+  <text class="ns" x="76" y="264">  (22/SSM, 80, 443 in; all out)</text>
+
+  <!-- compute -->
+  <rect class="card" x="346" y="118" width="262" height="206" rx="11" fill="#ffffff" stroke="#059669" stroke-width="1.7"/>
+  <text class="tag" x="366" y="144" fill="#047857">compute.yml</text>
+  <text class="nt" x="366" y="166">The host</text>
+  <text class="ns" x="366" y="192">EC2 t4g.small (arm64)</text>
+  <text class="ns" x="366" y="210">Elastic IP</text>
+  <text class="ns" x="366" y="228">IAM instance profile</text>
+  <text class="ns" x="366" y="246">user-data: Docker +</text>
+  <text class="ns" x="366" y="264">  CloudWatch Agent</text>
+
+  <!-- container-registry -->
+  <rect class="card" x="636" y="118" width="262" height="206" rx="11" fill="#ffffff" stroke="#f59e0b" stroke-width="1.7"/>
+  <text class="tag" x="656" y="144">container-registry.yml</text>
+  <text class="nt" x="656" y="166">Image hosting</text>
+  <text class="ns" x="656" y="192">ECR repo taskflow/api</text>
+  <text class="ns" x="656" y="210">ECR repo taskflow/web</text>
+  <text class="ns" x="656" y="228">Lifecycle policy:</text>
+  <text class="ns" x="656" y="246">  keep last 10 tagged</text>
+  <text class="ns" x="656" y="264">  expire untagged @ 7d</text>
+
+  <!-- iam -->
+  <rect class="card" x="926" y="118" width="218" height="206" rx="11" fill="#ffffff" stroke="#7c3aed" stroke-width="1.7"/>
+  <text class="tag" x="946" y="144" fill="#6d28d9">iam.yml</text>
+  <text class="nt" x="946" y="166">Deploy identity</text>
+  <text class="ns" x="946" y="192">GitHub OIDC provider</text>
+  <text class="ns" x="946" y="210">taskflow-deploy-role</text>
+  <text class="ns" x="946" y="228">Narrow perms:</text>
+  <text class="ns" x="946" y="246">  ECR push,</text>
+  <text class="ns" x="946" y="264">  CFN deploy, SSM Run</text>
+
+  <!-- Row 2 -->
+  <!-- storage -->
+  <rect class="card" x="56" y="372" width="262" height="190" rx="11" fill="#ffffff" stroke="#f59e0b" stroke-width="1.7"/>
+  <text class="tag" x="76" y="398">storage.yml</text>
+  <text class="nt" x="76" y="420">Persistence</text>
+  <text class="ns" x="76" y="446">S3 backups bucket</text>
+  <text class="ns" x="76" y="464">  (SSE-S3 · 30-day lifecycle)</text>
+  <text class="ns" x="76" y="482">S3 source-maps bucket</text>
+
+  <!-- parameters -->
+  <rect class="card" x="346" y="372" width="262" height="190" rx="11" fill="#ffffff" stroke="#f59e0b" stroke-width="1.7"/>
+  <text class="tag" x="366" y="398">parameters.yml</text>
+  <text class="nt" x="366" y="420">Config</text>
+  <text class="ns" x="366" y="446">SSM SecureString params</text>
+  <text class="ns" x="366" y="464">  /taskflow/prod/*</text>
+  <text class="ns" x="366" y="482">  resend_api_key,</text>
+  <text class="ns" x="366" y="500">  email_from_address, …</text>
+  <text class="ns" x="366" y="522">values set out-of-band</text>
+
+  <!-- monitoring -->
+  <rect class="card" x="636" y="372" width="262" height="190" rx="11" fill="#ffffff" stroke="#f59e0b" stroke-width="1.7"/>
+  <text class="tag" x="656" y="398">monitoring.yml</text>
+  <text class="nt" x="656" y="420">Observability</text>
+  <text class="ns" x="656" y="446">CloudWatch log groups</text>
+  <text class="ns" x="656" y="464">Metric filters (TDD §13)</text>
+  <text class="ns" x="656" y="482">Alarms</text>
+  <text class="ns" x="656" y="500">SNS topic taskflow-alerts</text>
+
+  <!-- external / not in CFN -->
+  <rect x="926" y="372" width="218" height="190" rx="11" fill="#fff7ed" stroke="#f6821f" stroke-width="1.6" stroke-dasharray="6 4"/>
+  <text class="tag" x="946" y="398" fill="#c2410c">NOT in CloudFormation</text>
+  <text class="nt" x="946" y="420" font-size="13px">Cloudflare · Resend</text>
+  <text class="ns" x="946" y="446">DNS · edge TLS · CDN</text>
+  <text class="ns" x="946" y="464">Origin CA cert</text>
+  <text class="ns" x="946" y="482">SPF / DKIM / DMARC</text>
+  <text class="ns" x="946" y="500">(Resend email auth)</text>
+  <text class="ns" x="946" y="522">ADR 036 / 067 / 085</text>
+
+  <!-- dependency edges (dashed amber). compute is the hub. -->
+  <!-- network exports VPC/subnet/SG imported by compute -->
+  <path class="ed" d="M318,200 H344"/>
+  <text class="el" x="320" y="192" text-anchor="end">imports VPC/subnet/SG</text>
+  <!-- compute pulls images from registry -->
+  <path class="ed" d="M608,206 H634"/>
+  <text class="el" x="612" y="198">pulls images</text>
+  <!-- compute reads secrets from parameters -->
+  <path class="ed" d="M477,326 V370"/>
+  <text class="el" x="484" y="352">reads secrets</text>
+  <!-- compute writes backups to storage -->
+  <path class="ed" d="M400,326 V348 H187 V370"/>
+  <text class="el" x="200" y="344">writes backups</text>
+  <!-- compute emits logs/metrics to monitoring -->
+  <path class="ed" d="M560,326 V348 H767 V370"/>
+  <text class="el" x="600" y="344">emits logs/metrics</text>
+  <!-- iam role consumed by CI deploy -->
+  <path class="ed" d="M1035,326 V360"/>
+  <text class="el" x="1042" y="350">→ CI deploy role (Diagram 4)</text>
+
+  <text class="foot" x="56" y="610">Solid borders are CloudFormation stacks. Dashed amber arrows: compute imports VPC/subnet/SG from network (a cross-stack export);</text>
+  <text class="foot" x="56" y="630">the other dashed arrows are runtime references the host makes. No dns, email, or ACM stack — those live in Cloudflare / Resend.</text>
+  <text class="foot" x="56" y="656">Definition of done (I2): every stack deploys cleanly to a sandbox account and cfn-lint is green in CI.</text>
+</svg>

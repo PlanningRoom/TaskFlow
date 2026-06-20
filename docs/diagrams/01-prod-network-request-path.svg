@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="912" viewBox="0 0 1240 912">
+  <defs>
+    <marker id="arrow" markerWidth="9" markerHeight="9" refX="7.5" refY="3" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#64748b"/>
+    </marker>
+    <filter id="sh" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="1.5" flood-color="#0f172a" flood-opacity="0.13"/>
+    </filter>
+  </defs>
+  <style>
+    text{font-family:'Inter','Segoe UI',Arial,sans-serif;}
+    .title{font-size:24px;font-weight:700;fill:#0f172a;}
+    .sub{font-size:13.5px;fill:#64748b;}
+    rect.card{filter:url(#sh);}
+    .nt{font-size:14px;font-weight:600;fill:#0f172a;}
+    .ns{font-size:11px;fill:#475569;}
+    .bl{font-size:12.5px;font-weight:700;}
+    .e{fill:none;stroke:#64748b;stroke-width:1.7;marker-end:url(#arrow);}
+    .el{font-size:10.5px;fill:#475569;}
+    .foot{font-size:11.5px;fill:#64748b;}
+  </style>
+
+  <rect width="1240" height="912" fill="#f8fafc"/>
+  <text class="title" x="60" y="50">Production Network &amp; Request Path</text>
+  <text class="sub" x="60" y="74">TaskFlow · TDD §5 · Cloudflare edge → single EC2 host (Docker Compose)</text>
+
+  <!-- AWS boundary -->
+  <rect x="290" y="300" width="900" height="550" rx="16" fill="#fffaf0" stroke="#f59e0b" stroke-width="1.6" stroke-dasharray="7 5"/>
+  <text class="bl" x="308" y="326" fill="#b45309">AWS — provisioned by CloudFormation (ADR 087)</text>
+
+  <!-- VPC boundary -->
+  <rect x="520" y="346" width="380" height="476" rx="14" fill="#eff6ff" fill-opacity="0.4" stroke="#3b82f6" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text class="bl" x="536" y="368" fill="#2563eb" font-size="11.5px">VPC · public subnet · security group (80/443, SSM)</text>
+
+  <!-- EC2 host -->
+  <rect x="540" y="442" width="340" height="360" rx="12" fill="#ffffff" stroke="#334155" stroke-width="1.5"/>
+  <text class="bl" x="556" y="466" fill="#334155" font-size="11.5px">EC2 t4g.small · docker-compose.prod.yml</text>
+
+  <!-- User -->
+  <rect class="card" x="630" y="70" width="160" height="64" rx="10" fill="#ffffff" stroke="#475569" stroke-width="1.6"/>
+  <text class="nt" x="710" y="100" text-anchor="middle">User</text>
+  <text class="ns" x="710" y="116" text-anchor="middle">Browser · SPA</text>
+
+  <!-- Cloudflare -->
+  <rect class="card" x="580" y="168" width="260" height="104" rx="10" fill="#fff7ed" stroke="#f6821f" stroke-width="1.6"/>
+  <text class="nt" x="710" y="194" text-anchor="middle">Cloudflare</text>
+  <text class="ns" x="710" y="213" text-anchor="middle">Edge TLS termination</text>
+  <text class="ns" x="710" y="229" text-anchor="middle">CDN · DDoS · WAF</text>
+  <text class="ns" x="710" y="245" text-anchor="middle">Proxied A record → Elastic IP</text>
+
+  <!-- Elastic IP -->
+  <rect class="card" x="630" y="362" width="160" height="50" rx="10" fill="#eef2ff" stroke="#3b82f6" stroke-width="1.6"/>
+  <text class="nt" x="710" y="384" text-anchor="middle">Elastic IP</text>
+  <text class="ns" x="710" y="400" text-anchor="middle">static public IP</text>
+
+  <!-- nginx -->
+  <rect class="card" x="560" y="476" width="300" height="60" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="1.6"/>
+  <text class="nt" x="710" y="502" text-anchor="middle">nginx  ·  :443 / :80</text>
+  <text class="ns" x="710" y="519" text-anchor="middle">Origin CA cert · security headers (ADR 083)</text>
+
+  <!-- web -->
+  <rect class="card" x="560" y="580" width="130" height="60" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.6"/>
+  <text class="nt" x="625" y="606" text-anchor="middle">web · :80</text>
+  <text class="ns" x="625" y="622" text-anchor="middle">static (Vite)</text>
+
+  <!-- api -->
+  <rect class="card" x="730" y="580" width="130" height="60" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
+  <text class="nt" x="795" y="606" text-anchor="middle">api · :8000</text>
+  <text class="ns" x="795" y="622" text-anchor="middle">FastAPI · Uvicorn</text>
+
+  <!-- db -->
+  <rect class="card" x="730" y="694" width="130" height="56" rx="10" fill="#eef2ff" stroke="#336791" stroke-width="1.6"/>
+  <text class="nt" x="795" y="718" text-anchor="middle">db</text>
+  <text class="ns" x="795" y="734" text-anchor="middle">PostgreSQL 16 · volume</text>
+
+  <!-- Resend (third-party) -->
+  <rect class="card" x="70" y="620" width="190" height="80" rx="10" fill="#ffffff" stroke="#0ea5e9" stroke-width="1.6"/>
+  <text class="nt" x="165" y="652" text-anchor="middle">Resend</text>
+  <text class="ns" x="165" y="670" text-anchor="middle">Transactional email</text>
+  <text class="ns" x="165" y="686" text-anchor="middle">HTTP API · httpx</text>
+
+  <!-- AWS managed services -->
+  <text class="ns" x="960" y="352" fill="#b45309" font-weight="600">Reached via IAM instance role:</text>
+  <rect class="card" x="960" y="362" width="200" height="54" rx="9" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text class="nt" x="975" y="384">SSM Parameter Store</text>
+  <text class="ns" x="975" y="400">/taskflow/prod/* secrets</text>
+  <rect class="card" x="960" y="432" width="200" height="54" rx="9" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text class="nt" x="975" y="454">S3</text>
+  <text class="ns" x="975" y="470">pg_dump backups · source maps</text>
+  <rect class="card" x="960" y="502" width="200" height="54" rx="9" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text class="nt" x="975" y="524">CloudWatch</text>
+  <text class="ns" x="975" y="540">logs · metrics · alarms</text>
+  <rect class="card" x="960" y="572" width="200" height="54" rx="9" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text class="nt" x="975" y="594">SNS · taskflow-alerts</text>
+  <text class="ns" x="975" y="610">→ operator email</text>
+  <rect class="card" x="960" y="642" width="200" height="54" rx="9" fill="#fffbeb" stroke="#f59e0b" stroke-width="1.5"/>
+  <text class="nt" x="975" y="664">ECR</text>
+  <text class="ns" x="975" y="680">api / web images</text>
+
+  <!-- Edges -->
+  <path class="e" d="M710,134 V166"/>
+  <text class="el" x="718" y="153">HTTPS</text>
+
+  <path class="e" d="M710,272 V360"/>
+  <text class="el" x="718" y="304">Origin CA cert</text>
+  <text class="el" x="718" y="318">Full (strict)</text>
+
+  <path class="e" d="M710,412 V474"/>
+  <path class="e" d="M625,536 V578"/>
+  <text class="el" x="560" y="562">/* → static</text>
+  <path class="e" d="M795,536 V578"/>
+  <text class="el" x="805" y="562">/api/* · /ws</text>
+  <path class="e" d="M795,640 V692"/>
+  <text class="el" x="805" y="672">asyncpg</text>
+
+  <!-- api/EC2 → Resend -->
+  <path class="e" d="M795,640 V660 H262"/>
+  <text class="el" x="430" y="652">email send · httpx</text>
+
+  <!-- EC2 → AWS managed services bus -->
+  <path d="M880,529 H940" class="e"/>
+  <text class="el" x="884" y="520">IAM role</text>
+  <path d="M940,389 V669" fill="none" stroke="#64748b" stroke-width="1.6"/>
+  <path class="e" d="M940,389 H958"/>
+  <path class="e" d="M940,459 H958"/>
+  <path class="e" d="M940,529 H958"/>
+  <path class="e" d="M940,599 H958"/>
+  <path class="e" d="M940,669 H958"/>
+
+  <!-- Footnotes -->
+  <text class="foot" x="60" y="882">Third-party, not in CloudFormation — Cloudflare (DNS · edge TLS · CDN/DDoS) and Resend (email). Origin↔edge uses a Cloudflare Origin CA cert at Full (strict). ADR 036 / 067 / 085.</text>
+  <text class="foot" x="60" y="902">The api process also hosts APScheduler cleanup jobs and the broadcaster (Postgres LISTEN/NOTIFY) that drives /ws fan-out — see Diagram 2.</text>
+</svg>
