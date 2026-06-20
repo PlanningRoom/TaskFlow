@@ -20,10 +20,10 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.4.15",
+    "@biomejs/biome": "2.5.0",
     "husky": "9.1.7",
-    "lint-staged": "17.0.5",
-    "turbo": "2.9.16",
+    "lint-staged": "17.0.8",
+    "turbo": "2.9.18",
     "typescript": "6.0.3"
   },
   "lint-staged": {
