@@ -44,7 +44,7 @@ def _set_session_cookies(response: Response, tokens: session_helpers.SessionToke
         tokens.session_token,
         max_age=settings.session_absolute_ttl_days * 86400,
         httponly=True,
-        secure=settings.cookie_secure,
+        secure=bool(settings.cookie_secure),
         samesite="lax",
         path="/",
     )
@@ -53,7 +53,7 @@ def _set_session_cookies(response: Response, tokens: session_helpers.SessionToke
         tokens.csrf_token,
         max_age=settings.session_absolute_ttl_days * 86400,
         httponly=False,  # readable by JS so the SPA can echo it (ADR 051)
-        secure=settings.cookie_secure,
+        secure=bool(settings.cookie_secure),
         samesite="lax",
         path="/",
     )
