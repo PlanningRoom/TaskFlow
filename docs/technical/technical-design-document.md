@@ -1092,14 +1092,15 @@ Routed through the `taskflow-alerts` SNS topic (email subscription):
 
 ### 14.2 CD (ADR 071, 087)
 
-`.github/workflows/deploy.yml` runs on push to `main`:
+`.github/workflows/deploy.yml` runs on push to `main` (and manual `workflow_dispatch`). The `deploy` job is gated on the `production` GitHub environment, so the run pauses for the required-reviewer approval before any step executes (ADR 073).
 
-1. Assume `taskflow-deploy-role` in AWS via GitHub OIDC (no long-lived keys).
-2. Build multi-arch images (`linux/arm64`), tag with the commit SHA, push to ECR.
-3. Run `aws cloudformation deploy` for each stack whose template changed.
-4. Run migrations: `aws ssm send-command` to the EC2 instance, executing `docker compose run --rm api alembic upgrade head`.
-5. Roll the service: `aws ssm send-command` executing `docker compose pull && docker compose up -d --remove-orphans`. Docker Compose performs a rolling update on each service — nginx stays up while `api` and `web` containers are replaced.
-6. Smoke-check `/health` from the deploy workflow; fail the deploy if it doesn't return 200 within a timeout.
+1. Assume `taskflow-deploy-role` in AWS via GitHub OIDC (no long-lived keys). The ECR registry URL is obtained from the ECR-login step's output, not a stored secret.
+2. Build `linux/arm64` images, tag with the commit SHA, push to ECR.
+3. Run `aws cloudformation deploy` for each stack whose template changed (gated on `infra/cloudformation/**` changing, or a manual `deploy_infra` input). The pipeline only updates existing stacks; initial creation is a one-time admin step.
+4. Sync the two non-secret host config files (`docker-compose.prod.yml`, `infra/nginx/nginx.conf`) to `/opt/taskflow` via SSM so the running config never drifts from the repo. TLS certs are operator-placed, never shipped by CI.
+5. Run migrations: `aws ssm send-command` to the EC2 instance, executing `docker compose run --rm api alembic upgrade head` — before the roll, so a bad migration fails the deploy without replacing the running app.
+6. Roll the service: `aws ssm send-command` executing `docker compose pull && docker compose up -d --remove-orphans`. Docker Compose performs a rolling update on each service — nginx stays up while `api` and `web` containers are replaced.
+7. Smoke-check `/health` host-local inside the same SSM command (`curl -fsSk https://localhost/health`, retried); the workflow gates on the SSM command's exit status and fails the deploy on a non-200. (Host-local because pre-DNS-cutover the runner has no path to the origin; the origin cert needs `-k`.)
 
 ### 14.3 Secrets flow (ADR 073)
 

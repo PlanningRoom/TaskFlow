@@ -104,7 +104,10 @@ upper-cases the leaf names, and writes `/opt/taskflow/.env`.
    Certificate*. Save the cert and key onto the host:
    - `/etc/taskflow/certs/origin.pem` (certificate)
    - `/etc/taskflow/certs/origin.key` (private key, `chmod 600`)
-   (Place via SSM Session Manager / the I3 deploy step.)
+   Place these **out-of-band via SSM Session Manager** (operator action during
+   I4). They are deliberately **never shipped by the CD pipeline** — a private
+   key must not pass through CI. The I3 deploy syncs only the non-secret config
+   (`docker-compose.prod.yml`, `nginx.conf`).
 2. **Encryption mode.** SSL/TLS → Overview → **Full (strict)**.
 3. **DNS.** DNS → add a **proxied** (orange-cloud) `A` record:
    `taskflow` → the Elastic IP from the `compute` stack output. TTL Auto.
@@ -126,21 +129,30 @@ upper-cases the leaf names, and writes `/opt/taskflow/.env`.
 
 ## 5. First deploy of the application (Phase I4)
 
-Until the I3 pipeline exists, ship the runtime artifacts to the host and roll the
-stack manually (via SSM Session Manager or the deploy role):
+**The normal path is the CD pipeline** (Phase I3, `.github/workflows/deploy.yml`):
+a push to `main` — or a manual *Run workflow* — builds the arm64 images, pushes
+them to ECR, syncs the non-secret config to the host, runs `alembic upgrade head`,
+rolls the compose stack (`pull` + `up -d`), and smoke-checks `/health`. It reaches
+the host entirely over **SSM Run Command** (no SSH), authenticating via the OIDC
+deploy role — no AWS keys anywhere. CloudFormation stacks are reconciled by the
+pipeline only when their templates change or the operator sets the `deploy_infra`
+input; the **initial** stack creation in §1 is the one-time admin step.
+
+The first cutover still needs the out-of-band prerequisites above (stacks created,
+SSM secrets populated, Cloudflare/Resend configured, origin cert placed). Once
+those are done, trigger the pipeline. The manual sequence below is the
+**break-glass fallback** if the pipeline is unavailable:
 
 ```bash
-# On the host (/opt/taskflow):
+# On the host (/opt/taskflow), with these already present:
 #   - docker-compose.prod.yml
 #   - infra/nginx/nginx.conf  (referenced by the compose bind-mount path)
 #   - /etc/taskflow/certs/origin.{pem,key}
 aws ecr get-login-password --region "$REGION" \
   | docker login --username AWS --password-stdin "$ECR_REGISTRY"
 docker compose -f /opt/taskflow/docker-compose.prod.yml pull
-docker compose -f /opt/taskflow/docker-compose.prod.yml up -d --remove-orphans
-
-# DB migrations (also run by the I3 pipeline):
 docker compose -f /opt/taskflow/docker-compose.prod.yml run --rm api alembic upgrade head
+docker compose -f /opt/taskflow/docker-compose.prod.yml up -d --remove-orphans
 ```
 
 Smoke check:
@@ -160,13 +172,22 @@ Set the GitHub repo/environment secret `AWS_DEPLOY_ROLE_ARN` to the `taskflow-ia
 output `DeployRoleArn`. The deploy workflow (I3) assumes it via OIDC — no AWS
 keys are stored anywhere (TDD §14.3).
 
+Create a GitHub **environment** named `production` (Settings → Environments) and
+add a **required reviewer** (ADR 073). The `deploy.yml` job declares
+`environment: production`, so every deploy pauses for that approval before it
+builds or touches the host. The ECR registry URL is **not** a secret — the
+pipeline derives it from the ECR-login step.
+
 ---
 
 ## 7. Rollback (TDD §14.4)
 
-- **App image:** redeploy the prior tag — `IMAGE_TAG=<prior-sha> docker compose
-  -f /opt/taskflow/docker-compose.prod.yml up -d`. The previous image is still in
-  ECR (lifecycle keeps the last 10).
+- **App image (pipeline):** re-run the deploy workflow via *Run workflow*
+  (`workflow_dispatch`) with `image_tag=<prior-sha>`. It re-rolls the previous
+  image (still in ECR; lifecycle keeps the last 10) through the same migrate +
+  smoke path. This is the preferred rollback.
+- **App image (manual fallback):** on the host, `IMAGE_TAG=<prior-sha> docker
+  compose -f /opt/taskflow/docker-compose.prod.yml up -d`.
 - **Schema:** roll forward with a corrective migration; do not run `downgrade` in
   prod.
 - **Infrastructure:** `aws cloudformation cancel-update-stack --stack-name

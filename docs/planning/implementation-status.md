@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
-**Last Updated:** 2026-06-20
-**Current Phase:** Part I in progress — I1 + I2 complete (see Notes 2026-06-20); I3 (CD Pipeline — `deploy.yml`) next
+**Last Updated:** 2026-06-28
+**Current Phase:** Part I in progress — I1 + I2 + I3 complete (see Notes 2026-06-28); I4 (Production Cutover) next — needs a live AWS account
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -55,8 +55,8 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | F | Frontend Foundation | 4 | 4 | 0 | 0 |
 | G | Frontend Screens | 8 | 8 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 5 | 0 | 0 |
-| I | E2E, Infra, Deploy | 6 | 2 | 0 | 0 |
-| **Total** | | **42** | **38** | **0** | **0** |
+| I | E2E, Infra, Deploy | 6 | 3 | 0 | 0 |
+| **Total** | | **42** | **39** | **0** | **0** |
 
 ---
 
@@ -475,15 +475,23 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 - [x] `cfn-lint` clean in CI — new `cfn-lint` job in `ci.yml` + `make cfn-lint`; all 7 templates pass
 - [x] *(No `dns.yml` / `email.yml` / ACM — DNS + email-auth are in Cloudflare, not CFN)*
 
-#### Phase I3 — CD Pipeline `[ ] Not started`
-- [ ] `.github/workflows/deploy.yml`
-- [ ] OIDC role assumption
-- [ ] Build + push arm64 images to ECR
-- [ ] CFN deploy of changed stacks
-- [ ] SSM `alembic upgrade head`
-- [ ] SSM `docker compose pull && up -d`
-- [ ] Health smoke check from workflow
-- [ ] Rollback procedure documented in runbook
+#### Phase I3 — CD Pipeline `[x] Complete`
+
+**Scope note (mirrors I2):** no AWS account in this environment, so I3 = author
+`deploy.yml` + statically validate (YAML parse, `shellcheck` on every embedded
+script, `bash -n` on the generated host script) + reconcile the runbook. The
+end-to-end "trivial change reaches the host + smoke passes" DoD is necessarily an
+**I4** check against the live account.
+
+- [x] `.github/workflows/deploy.yml` — single `deploy` job; triggers **push-to-`main` + `workflow_dispatch` only, never `pull_request`** (public-repo safety); `concurrency: deploy-prod` (no mid-roll cancel)
+- [x] OIDC role assumption — `aws-actions/configure-aws-credentials@v4` assumes `secrets.AWS_DEPLOY_ROLE_ARN` (the `taskflow-iam-DeployRoleArn` export); `permissions: id-token: write`; no long-lived keys anywhere
+- [x] `environment: production` gate (ADR 073) — the job waits for the production environment's required-reviewer approval before any step runs; the I4 operator configures the reviewer rule
+- [x] Build + push arm64 images to ECR — `setup-qemu` + `buildx` + `build-push-action@v6` (`platforms: linux/arm64`, `provenance: false`); api context `apps/api`, web context repo-root `.` with `apps/web/Dockerfile`; tagged with the commit SHA (deterministic rollback)
+- [x] CFN deploy of changed stacks — runbook §1 ordered `aws cloudformation deploy` loop, gated on `infra/cloudformation/**` changing (or the `deploy_infra` dispatch input); `--no-fail-on-empty-changeset`. Pipeline only **updates** existing stacks; initial creation stays the I4 admin step
+- [x] SSM `alembic upgrade head` — run explicitly (`compose run --rm api alembic upgrade head`) **before** the roll, so a bad migration fails the deploy before tearing down the running app (the api entrypoint also migrates on start; idempotent)
+- [x] SSM `docker compose pull && up -d` — one `AWS-RunShellScript` Send-Command does: sync the two non-secret config files (base64) → ECR re-login → `pull` → migrate → `up -d --remove-orphans`; reaches the host with **no SSH**. Runtime secrets stay on the host (already hydrated from SSM into `/opt/taskflow/.env`); the pipeline injects only `IMAGE_TAG` + the config files
+- [x] Health smoke check from workflow — host-local `curl -fsSk https://localhost/health` retry loop inside the same SSM command (nginx 80→443 redirect + origin cert ⇒ `-k`); the workflow polls `get-command-invocation` and fails the job unless `Status == Success`
+- [x] Rollback procedure documented in runbook — §7 now leads with the pipeline path (`workflow_dispatch` + `image_tag=<prior-sha>`); manual host roll kept as fallback
 
 #### Phase I4 — Production Cutover `[ ] Not started`
 - [ ] All SSM Parameter Store values populated
@@ -526,6 +534,80 @@ These were surfaced during plan validation (§6.4 of the implementation plan). R
 ## Notes
 
 Use this section as a running log of decisions, blockers, or context that should persist across sessions.
+
+### 2026-06-28 — Phase I3 complete (CD Pipeline / `deploy.yml`)
+
+Authored `.github/workflows/deploy.yml` — the Continuous Deployment pipeline that
+takes a merge to `main` to the running EC2 host with no manual SSH. **Statically
+validated** (no AWS account here, same scope boundary as I2): YAML parses;
+`shellcheck` clean on every embedded `run:` script; the heredoc-generated host
+script reproduced with dummy inputs passes `bash -n` and `shellcheck` (the
+escaping is verified — `\$AWS_REGION`/`\$ECR_REGISTRY` stay literal for the host,
+`$IMAGE_TAG`/the base64 blobs expand on the runner); `docker compose -f
+docker-compose.prod.yml config -q` still ok (compose untouched).
+
+**Shape** — one `deploy` job, sequential under a single OIDC session (avoids
+`needs`/skip races):
+1. **OIDC** (`configure-aws-credentials@v4` → `secrets.AWS_DEPLOY_ROLE_ARN`),
+   `permissions: id-token: write`. The only repo secret is the role **ARN** — not
+   a credential.
+2. **ECR login** + **buildx/QEMU** build of both arm64 images, tagged with the
+   commit SHA, pushed to `taskflow/api` + `taskflow/web`.
+3. **Conditional CFN reconcile** — only when `infra/cloudformation/**` changed (or
+   the `deploy_infra` dispatch input), in Export/ImportValue order with
+   `--no-fail-on-empty-changeset`. Ordinary code pushes don't churn infra.
+4. **SSM Run Command** to the `taskflow-compute` `InstanceId`: sync the two
+   non-secret config files (base64-decoded on the host) → ECR re-login → `pull` →
+   `alembic upgrade head` → `up -d` → `curl -fsSk https://localhost/health`. The
+   workflow polls the invocation and gates on `Status == Success`.
+
+**Security guardrails (deliberate):** triggers are **push-to-`main` +
+`workflow_dispatch` only — never `pull_request`** (public repo; a fork PR must not
+reach the deploy role). Runtime secrets never transit CI — the host already
+hydrates `/opt/taskflow/.env` from SSM at boot; the pipeline injects only
+`IMAGE_TAG` and the two config files. TLS certs (`origin.{pem,key}`) stay
+**operator-placed via SSM Session Manager** (I4), never shipped by the workflow.
+
+**Decisions worth noting:**
+- **Config sync each deploy (chosen with user).** `docker-compose.prod.yml` +
+  `infra/nginx/nginx.conf` are shipped to the host every run, so prod config can't
+  silently drift from the repo. Both are non-secret; nginx.conf must land at
+  `/opt/taskflow/infra/nginx/nginx.conf` because the compose bind-mount is
+  relative.
+- **Migrate before roll.** Explicit `compose run --rm api alembic upgrade head`
+  precedes `up -d` so a bad migration fails the deploy before the running app is
+  replaced. The api entrypoint also migrates on start — idempotent, harmless.
+- **Pipeline updates stacks, never creates them.** Matches the deploy role's
+  change-set-only CloudFormation scope; first creation is the §1 admin step.
+- **Host-local smoke, not public.** Checks `https://localhost/health` on the box
+  (works pre-Cloudflare-cutover); `-k` because the origin cert won't match
+  `localhost`.
+
+**Docs reconciled:** runbook §5 now leads with the pipeline (manual sequence kept
+as break-glass), §7 rollback leads with `workflow_dispatch image_tag=<prior-sha>`,
+§3 clarifies certs are operator-placed and never CI-shipped.
+
+**Post-build review reconciliation (2026-06-28).** A pass of `deploy.yml` against
+ADRs 071/072/073/087 + TDD §14 surfaced five inconsistencies, all now resolved:
+- **(code) Added `environment: production`** to the deploy job — ADR 073 requires
+  the deploy to gate on the production environment's manual approval; the job was
+  missing it. The push-to-main trigger still fires, then waits for a reviewer.
+- **(docs) ECR registry is derived, not stored.** Dropped the `ECR_REPOSITORY`
+  secret from ADR 073 (amendment) and TDD §14.3 — the registry comes from the
+  `amazon-ecr-login` step output (`AWS_DEPLOY_ROLE_ARN` is now the only CI secret).
+- **(docs) Config-file sync added to TDD §14.2** (step 4) — the compose + nginx
+  sync wasn't in the architecture-of-record.
+- **(docs) Smoke check clarified in TDD §14.2** (step 7) — runs host-local via the
+  SSM command and gates on its exit status, not from the runner.
+- **(docs) "multi-arch" → "linux/arm64"** in ADR 071 / TDD §14.2 (arm64 is the
+  only target per ADR 038).
+- *Adjacent, out of I3 scope (tracked separately):* `ci.yml` lacks the TDD §14.1
+  `build-images` job, so a broken Dockerfile isn't caught until `deploy.yml` runs.
+
+**Carried to I4/I5 (unchanged):** the live stack apply + SSM secret population +
+Cloudflare/Resend dashboard config + cert placement + configuring the `production`
+environment reviewer + the **first real pipeline run** (the end-to-end DoD);
+subscribe + synthesize alarms (I5).
 
 ### 2026-06-20 — Phase I2 complete (Infrastructure / CloudFormation + Resend & Cloudflare swap)
 

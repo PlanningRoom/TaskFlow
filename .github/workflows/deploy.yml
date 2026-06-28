@@ -1,0 +1,241 @@
+# TaskFlow Continuous Deployment (Phase I3 / TDD §14.2).
+#
+# Takes a merge to `main` all the way to the running EC2 host: build arm64
+# images -> push to ECR -> (optionally) reconcile CloudFormation -> sync the
+# non-secret host config -> migrate -> roll the compose stack -> smoke-check.
+#
+# Security model (ADR 073 / TDD §14.3):
+#   - Auth is GitHub OIDC only. No long-lived AWS keys exist anywhere; the sole
+#     repo secret is AWS_DEPLOY_ROLE_ARN — an ARN, not a credential.
+#   - Triggers are push-to-main and manual dispatch ONLY, never pull_request:
+#     this is a public repo, and a fork PR must never be able to assume the
+#     deploy role.
+#   - Runtime secrets never pass through this workflow. The host already
+#     hydrates /opt/taskflow/.env from SSM Parameter Store at boot
+#     (infra/ec2/user-data.sh); the pipeline only ships non-secret config
+#     (docker-compose.prod.yml, nginx.conf). TLS certs are operator-placed.
+#
+# No AWS account exists in this environment yet, so the first real run is the
+# I4 cutover; this file is authored and statically validated for now.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: "Image tag to deploy (default: commit SHA). Set to a prior SHA to roll back."
+        required: false
+      deploy_infra:
+        description: "Also reconcile the CloudFormation stacks"
+        type: boolean
+        default: false
+
+# OIDC needs id-token: write; everything else stays read-only.
+permissions:
+  id-token: write
+  contents: read
+
+# One deploy at a time; never cancel a roll-out mid-flight.
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Build, push, and roll
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Gate on the `production` GitHub environment (ADR 073): the deploy pauses
+    # for the required-reviewer approval configured on that environment before
+    # any image is built or the host is touched. The trigger still fires on
+    # push-to-main, but the roll-out waits for a human. Secrets may be scoped to
+    # this environment too.
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # HEAD + HEAD^ so we can detect CloudFormation template changes.
+          fetch-depth: 2
+
+      - name: Assume the deploy role (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Resolve the image tag
+        id: vars
+        run: |
+          TAG="${{ github.event.inputs.image_tag }}"
+          [ -n "$TAG" ] || TAG="${{ github.sha }}"
+          echo "image_tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Deploying image tag: $TAG"
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # The pipeline only UPDATES existing stacks (the deploy role is scoped to
+      # CloudFormation change-sets on taskflow-*). Initial stack creation is an
+      # I4 admin step. Skipped unless templates changed or the operator opts in,
+      # so an ordinary code push never churns infra. Order follows the
+      # Export/ImportValue dependency chain (runbook §1).
+      - name: Detect infrastructure changes
+        id: infra
+        run: |
+          if [ "${{ github.event.inputs.deploy_infra }}" = "true" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          elif git diff --name-only HEAD^ HEAD 2>/dev/null | grep -q '^infra/cloudformation/'; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No CloudFormation changes; skipping stack reconcile."
+          fi
+
+      - name: Reconcile CloudFormation stacks
+        if: steps.infra.outputs.changed == 'true'
+        run: |
+          set -euo pipefail
+          deploy () { # deploy <stack-suffix> <template> [extra args...]
+            aws cloudformation deploy \
+              --region "$AWS_REGION" \
+              --stack-name "taskflow-$1" \
+              --template-file "infra/cloudformation/$2" \
+              --capabilities CAPABILITY_NAMED_IAM \
+              --no-fail-on-empty-changeset \
+              "${@:3}"
+          }
+          deploy network            network.yml
+          deploy iam                iam.yml --parameter-overrides GitHubOrg=PlanningRoom GitHubRepo=TaskFlow
+          deploy container-registry container-registry.yml
+          deploy storage            storage.yml
+          deploy parameters         parameters.yml
+          deploy monitoring         monitoring.yml
+          deploy compute            compute.yml
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Both Dockerfiles pin FROM --platform=linux/arm64, so QEMU on this x86
+      # runner produces arm64 images for the t4g.small host (ADR 038).
+      - name: Build and push the API image
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/api
+          file: apps/api/Dockerfile
+          platforms: linux/arm64
+          provenance: false
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/taskflow/api:${{ steps.vars.outputs.image_tag }}
+
+      # The web image is a monorepo build: its Dockerfile COPYs pnpm-workspace.yaml
+      # and apps/web, so the build context is the repo root.
+      - name: Build and push the web image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          platforms: linux/arm64
+          provenance: false
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/taskflow/web:${{ steps.vars.outputs.image_tag }}
+
+      - name: Resolve the target instance
+        id: host
+        run: |
+          set -euo pipefail
+          INSTANCE_ID="$(aws cloudformation describe-stacks \
+            --region "$AWS_REGION" --stack-name taskflow-compute \
+            --query "Stacks[0].Outputs[?OutputKey=='InstanceId'].OutputValue" \
+            --output text)"
+          test -n "$INSTANCE_ID" && test "$INSTANCE_ID" != "None"
+          echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
+          echo "Target instance: $INSTANCE_ID"
+
+      # Drive the host via SSM Run Command — no SSH, no open port 22. One command
+      # syncs config, migrates, rolls, and smoke-checks; its exit code is the
+      # deploy gate. ECR_REGISTRY/AWS_REGION/POSTGRES_PASSWORD come from the
+      # host's /opt/taskflow/.env (already hydrated from SSM); only IMAGE_TAG and
+      # the two non-secret config files are injected here.
+      - name: Deploy to the host via SSM
+        env:
+          INSTANCE_ID: ${{ steps.host.outputs.instance_id }}
+          IMAGE_TAG: ${{ steps.vars.outputs.image_tag }}
+        run: |
+          set -euo pipefail
+
+          COMPOSE_B64="$(base64 -w0 docker-compose.prod.yml)"
+          NGINX_B64="$(base64 -w0 infra/nginx/nginx.conf)"
+
+          # Host-side $ is escaped (\$) so it expands on the instance, not here.
+          # Bare $ (COMPOSE_B64, NGINX_B64, IMAGE_TAG) is injected from the runner.
+          REMOTE="$(cat <<EOF
+          set -euo pipefail
+          mkdir -p /opt/taskflow/infra/nginx
+          echo "$COMPOSE_B64" | base64 -d > /opt/taskflow/docker-compose.prod.yml
+          echo "$NGINX_B64" | base64 -d > /opt/taskflow/infra/nginx/nginx.conf
+          cd /opt/taskflow
+          set -a; . ./.env; set +a
+          export IMAGE_TAG="$IMAGE_TAG"
+          aws ecr get-login-password --region "\$AWS_REGION" | docker login --username AWS --password-stdin "\$ECR_REGISTRY"
+          docker compose -f docker-compose.prod.yml pull
+          docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
+          docker compose -f docker-compose.prod.yml up -d --remove-orphans
+          for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
+            curl -fsSk https://localhost/health >/dev/null 2>&1 && break || sleep 4
+          done
+          # Unguarded: a non-200 here aborts under set -e and fails the deploy.
+          curl -fsSk https://localhost/health
+          echo
+          echo "deploy complete for tag $IMAGE_TAG"
+          EOF
+          )"
+
+          jq -n --arg s "$REMOTE" '{commands: [$s], executionTimeout: ["3600"]}' > /tmp/ssm-params.json
+
+          CMD_ID="$(aws ssm send-command \
+            --region "$AWS_REGION" \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "TaskFlow deploy ${IMAGE_TAG}" \
+            --parameters file:///tmp/ssm-params.json \
+            --query Command.CommandId --output text)"
+          echo "SSM command: $CMD_ID"
+
+          # Poll to completion (cap ~15 min); the invocation may not register for
+          # a moment after send, hence the tolerant first reads.
+          STATUS=Pending
+          for _ in $(seq 1 90); do
+            sleep 10
+            STATUS="$(aws ssm get-command-invocation \
+              --region "$AWS_REGION" --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || echo Pending)"
+            echo "status: $STATUS"
+            case "$STATUS" in
+              Success|Failed|Cancelled|TimedOut) break ;;
+            esac
+          done
+
+          echo "----- stdout -----"
+          aws ssm get-command-invocation --region "$AWS_REGION" \
+            --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query StandardOutputContent --output text || true
+          echo "----- stderr -----"
+          aws ssm get-command-invocation --region "$AWS_REGION" \
+            --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query StandardErrorContent --output text || true
+
+          if [ "$STATUS" != "Success" ]; then
+            echo "Deploy failed (SSM status: $STATUS)"
+            exit 1
+          fi
+          echo "Deploy succeeded."
