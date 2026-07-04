@@ -12,7 +12,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.10.1",
     "@playwright/test": "1.49.1",
-    "@types/node": "22.13.10",
+    "@types/node": "26.1.0",
     "typescript": "6.0.3"
   }
 }
