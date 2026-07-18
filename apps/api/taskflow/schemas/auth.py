@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, EmailStr, Field
 
-from taskflow.schemas.users import CurrentUser
+from taskflow.schemas.members import Role
+from taskflow.schemas.users import CurrentUser, UserSummary
 
 PasswordField = Annotated[str, Field(min_length=8, max_length=128)]
 NameField = Annotated[str, Field(min_length=1, max_length=120)]
@@ -65,6 +66,19 @@ class AcceptInvitationRequest(BaseModel):
 
 class AcceptInvitationResponse(BaseModel):
     user: CurrentUser
+
+
+class InvitationPreviewResponse(BaseModel):
+    """Pre-acceptance invitation preview (DRD §8.2)."""
+
+    workspace_name: str
+    email: EmailStr
+    role: Role
+    invited_by: UserSummary | None
+    status: Literal["pending", "expired"]
+    # True when a live account already exists for the invited email — the
+    # accept screen then skips the display-name/password fields.
+    existing_user: bool
 
 
 class OkResponse(BaseModel):

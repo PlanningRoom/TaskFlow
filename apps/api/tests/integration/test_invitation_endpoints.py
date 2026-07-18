@@ -248,3 +248,100 @@ async def test_list_invitations_reports_accepted_and_expired_status(
     statuses = {i["email"]: i["status"] for i in response.json()["invitations"]}
     assert statuses["accepted@example.com"] == "accepted"
     assert statuses["expired@example.com"] == "expired"
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Invitation preview — GET /auth/invitations/{token} (DRD §8.2)
+# ──────────────────────────────────────────────────────────────────────────────
+
+
+async def _seed_invitation(
+    db_session: AsyncSession,
+    *,
+    email: str = "newhire@example.com",
+    role: str = "member",
+    expired: bool = False,
+    accepted: bool = False,
+) -> str:
+    """Insert an invitation from the signed-up owner; returns the raw token."""
+    import secrets
+    from datetime import UTC, datetime, timedelta
+
+    from taskflow.auth.tokens import hash_token
+
+    owner = await db_session.scalar(select(User).where(User.role == "owner"))
+    assert owner is not None
+    now = datetime.now(UTC)
+    raw = secrets.token_urlsafe(32)
+    db_session.add(
+        Invitation(
+            workspace_id=owner.workspace_id,
+            email=email,
+            role=role,
+            token_hash=hash_token(raw),
+            invited_by=owner.id,
+            expires_at=now + (timedelta(days=-1) if expired else timedelta(days=7)),
+            accepted_at=now - timedelta(hours=1) if accepted else None,
+        )
+    )
+    await db_session.commit()
+    return raw
+
+
+async def test_preview_pending_invitation_for_new_user(
+    http: AsyncClient, db_session: AsyncSession
+) -> None:
+    await signup_owner(http)
+    raw = await _seed_invitation(db_session)
+
+    response = await http.get(f"/api/v1/auth/invitations/{raw}")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["workspace_name"] == "Aurora Studio"
+    assert body["email"] == "newhire@example.com"
+    assert body["role"] == "member"
+    assert body["status"] == "pending"
+    assert body["existing_user"] is False
+    assert body["invited_by"]["display_name"] == "Aurora Owner"
+
+
+async def test_preview_flags_existing_user(http: AsyncClient, db_session: AsyncSession) -> None:
+    await signup_owner(http)
+    owner = await db_session.scalar(select(User).where(User.role == "owner"))
+    assert owner is not None
+    await make_user(db_session, workspace_id=owner.workspace_id, email="veteran@example.com")
+    raw = await _seed_invitation(db_session, email="veteran@example.com")
+
+    response = await http.get(f"/api/v1/auth/invitations/{raw}")
+    assert response.status_code == 200, response.text
+    assert response.json()["existing_user"] is True
+
+
+async def test_preview_expired_invitation_returns_expired_status(
+    http: AsyncClient, db_session: AsyncSession
+) -> None:
+    await signup_owner(http)
+    raw = await _seed_invitation(db_session, expired=True)
+
+    response = await http.get(f"/api/v1/auth/invitations/{raw}")
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "expired"
+    assert body["workspace_name"] == "Aurora Studio"
+
+
+async def test_preview_accepted_invitation_is_invalid(
+    http: AsyncClient, db_session: AsyncSession
+) -> None:
+    await signup_owner(http)
+    raw = await _seed_invitation(db_session, accepted=True)
+
+    response = await http.get(f"/api/v1/auth/invitations/{raw}")
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_TOKEN"
+
+
+async def test_preview_unknown_token_is_invalid(http: AsyncClient) -> None:
+    response = await http.get("/api/v1/auth/invitations/not-a-real-token-aaaaaaaaaaaa")
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "INVALID_TOKEN"

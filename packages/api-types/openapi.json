@@ -36,7 +36,9 @@
             "type": "string"
           }
         },
-        "required": ["token"],
+        "required": [
+          "token"
+        ],
         "title": "AcceptInvitationRequest",
         "type": "object"
       },
@@ -46,7 +48,9 @@
             "$ref": "#/components/schemas/CurrentUser"
           }
         },
-        "required": ["user"],
+        "required": [
+          "user"
+        ],
         "title": "AcceptInvitationResponse",
         "type": "object"
       },
@@ -141,19 +145,29 @@
             "type": "string"
           }
         },
-        "required": ["current_password", "new_password"],
+        "required": [
+          "current_password",
+          "new_password"
+        ],
         "title": "ChangePasswordRequest",
         "type": "object"
       },
       "ChangeRoleRequest": {
         "properties": {
           "role": {
-            "enum": ["owner", "admin", "member", "viewer"],
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "viewer"
+            ],
             "title": "Role",
             "type": "string"
           }
         },
-        "required": ["role"],
+        "required": [
+          "role"
+        ],
         "title": "ChangeRoleRequest",
         "type": "object"
       },
@@ -196,7 +210,14 @@
             "type": "string"
           }
         },
-        "required": ["id", "body", "author", "mentions", "created_at", "updated_at"],
+        "required": [
+          "id",
+          "body",
+          "author",
+          "mentions",
+          "created_at",
+          "updated_at"
+        ],
         "title": "CommentDTO",
         "type": "object"
       },
@@ -209,14 +230,25 @@
             "type": "string"
           }
         },
-        "required": ["body"],
+        "required": [
+          "body"
+        ],
         "title": "CreateCommentRequest",
         "type": "object"
       },
       "CreateLabelRequest": {
         "properties": {
           "color": {
-            "enum": ["blue", "green", "red", "purple", "amber", "pink", "cyan", "orange"],
+            "enum": [
+              "blue",
+              "green",
+              "red",
+              "purple",
+              "amber",
+              "pink",
+              "cyan",
+              "orange"
+            ],
             "title": "Color",
             "type": "string"
           },
@@ -227,7 +259,10 @@
             "type": "string"
           }
         },
-        "required": ["name", "color"],
+        "required": [
+          "name",
+          "color"
+        ],
         "title": "CreateLabelRequest",
         "type": "object"
       },
@@ -263,7 +298,9 @@
             "type": "string"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "title": "CreateProjectRequest",
         "type": "object"
       },
@@ -323,7 +360,13 @@
           "priority": {
             "anyOf": [
               {
-                "enum": ["none", "low", "medium", "high", "urgent"],
+                "enum": [
+                  "none",
+                  "low",
+                  "medium",
+                  "high",
+                  "urgent"
+                ],
                 "type": "string"
               },
               {
@@ -335,7 +378,14 @@
           "status": {
             "anyOf": [
               {
-                "enum": ["backlog", "todo", "in_progress", "in_review", "done", "cancelled"],
+                "enum": [
+                  "backlog",
+                  "todo",
+                  "in_progress",
+                  "in_review",
+                  "done",
+                  "cancelled"
+                ],
                 "type": "string"
               },
               {
@@ -351,7 +401,9 @@
             "type": "string"
           }
         },
-        "required": ["title"],
+        "required": [
+          "title"
+        ],
         "title": "CreateTaskRequest",
         "type": "object"
       },
@@ -434,7 +486,12 @@
             "$ref": "#/components/schemas/TaskCounts"
           }
         },
-        "required": ["id", "name", "color", "task_counts"],
+        "required": [
+          "id",
+          "name",
+          "color",
+          "task_counts"
+        ],
         "title": "DashboardProjectDTO",
         "type": "object"
       },
@@ -448,7 +505,9 @@
             "type": "array"
           }
         },
-        "required": ["projects"],
+        "required": [
+          "projects"
+        ],
         "title": "DashboardProjectsResponse",
         "type": "object"
       },
@@ -461,7 +520,9 @@
             "type": "string"
           }
         },
-        "required": ["password"],
+        "required": [
+          "password"
+        ],
         "title": "DeleteAccountRequest",
         "type": "object"
       },
@@ -473,7 +534,9 @@
             "type": "string"
           }
         },
-        "required": ["user_id"],
+        "required": [
+          "user_id"
+        ],
         "title": "GrantProjectAccessRequest",
         "type": "object"
       },
@@ -483,7 +546,9 @@
             "$ref": "#/components/schemas/ProjectMemberDTO"
           }
         },
-        "required": ["member"],
+        "required": [
+          "member"
+        ],
         "title": "GrantProjectAccessResponse",
         "type": "object"
       },
@@ -508,7 +573,9 @@
             "type": "string"
           }
         },
-        "required": ["status"],
+        "required": [
+          "status"
+        ],
         "title": "HealthStatus",
         "type": "object"
       },
@@ -551,7 +618,12 @@
             ]
           },
           "role": {
-            "enum": ["owner", "admin", "member", "viewer"],
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "viewer"
+            ],
             "title": "Role",
             "type": "string"
           },
@@ -561,7 +633,11 @@
             "type": "string"
           },
           "status": {
-            "enum": ["pending", "accepted", "expired"],
+            "enum": [
+              "pending",
+              "accepted",
+              "expired"
+            ],
             "title": "Status",
             "type": "string"
           }
@@ -579,10 +655,75 @@
         "title": "InvitationDTO",
         "type": "object"
       },
+      "InvitationPreviewResponse": {
+        "description": "Pre-acceptance invitation preview (DRD \u00a78.2).",
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "existing_user": {
+            "title": "Existing User",
+            "type": "boolean"
+          },
+          "invited_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/UserSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "viewer"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "expired"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "workspace_name": {
+            "title": "Workspace Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspace_name",
+          "email",
+          "role",
+          "invited_by",
+          "status",
+          "existing_user"
+        ],
+        "title": "InvitationPreviewResponse",
+        "type": "object"
+      },
       "LabelDTO": {
         "properties": {
           "color": {
-            "enum": ["blue", "green", "red", "purple", "amber", "pink", "cyan", "orange"],
+            "enum": [
+              "blue",
+              "green",
+              "red",
+              "purple",
+              "amber",
+              "pink",
+              "cyan",
+              "orange"
+            ],
             "title": "Color",
             "type": "string"
           },
@@ -596,7 +737,11 @@
             "type": "string"
           }
         },
-        "required": ["id", "name", "color"],
+        "required": [
+          "id",
+          "name",
+          "color"
+        ],
         "title": "LabelDTO",
         "type": "object"
       },
@@ -621,7 +766,10 @@
             "title": "Next Cursor"
           }
         },
-        "required": ["events", "next_cursor"],
+        "required": [
+          "events",
+          "next_cursor"
+        ],
         "title": "ListActivityResponse",
         "type": "object"
       },
@@ -635,7 +783,9 @@
             "type": "array"
           }
         },
-        "required": ["comments"],
+        "required": [
+          "comments"
+        ],
         "title": "ListCommentsResponse",
         "type": "object"
       },
@@ -649,7 +799,9 @@
             "type": "array"
           }
         },
-        "required": ["invitations"],
+        "required": [
+          "invitations"
+        ],
         "title": "ListInvitationsResponse",
         "type": "object"
       },
@@ -663,7 +815,9 @@
             "type": "array"
           }
         },
-        "required": ["labels"],
+        "required": [
+          "labels"
+        ],
         "title": "ListLabelsResponse",
         "type": "object"
       },
@@ -677,7 +831,9 @@
             "type": "array"
           }
         },
-        "required": ["members"],
+        "required": [
+          "members"
+        ],
         "title": "ListMembersResponse",
         "type": "object"
       },
@@ -702,7 +858,10 @@
             "type": "array"
           }
         },
-        "required": ["notifications", "next_cursor"],
+        "required": [
+          "notifications",
+          "next_cursor"
+        ],
         "title": "ListNotificationsResponse",
         "type": "object"
       },
@@ -716,7 +875,9 @@
             "type": "array"
           }
         },
-        "required": ["members"],
+        "required": [
+          "members"
+        ],
         "title": "ListProjectAccessResponse",
         "type": "object"
       },
@@ -730,7 +891,9 @@
             "type": "array"
           }
         },
-        "required": ["projects"],
+        "required": [
+          "projects"
+        ],
         "title": "ListProjectsResponse",
         "type": "object"
       },
@@ -755,7 +918,10 @@
             "type": "array"
           }
         },
-        "required": ["tasks", "next_cursor"],
+        "required": [
+          "tasks",
+          "next_cursor"
+        ],
         "title": "ListTasksResponse",
         "type": "object"
       },
@@ -771,7 +937,10 @@
             "type": "string"
           }
         },
-        "required": ["email", "password"],
+        "required": [
+          "email",
+          "password"
+        ],
         "title": "LoginRequest",
         "type": "object"
       },
@@ -781,7 +950,9 @@
             "$ref": "#/components/schemas/CurrentUser"
           }
         },
-        "required": ["user"],
+        "required": [
+          "user"
+        ],
         "title": "LoginResponse",
         "type": "object"
       },
@@ -829,7 +1000,12 @@
             "type": "string"
           },
           "role": {
-            "enum": ["owner", "admin", "member", "viewer"],
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "viewer"
+            ],
             "title": "Role",
             "type": "string"
           }
@@ -859,7 +1035,10 @@
             "type": "array"
           }
         },
-        "required": ["project", "tasks"],
+        "required": [
+          "project",
+          "tasks"
+        ],
         "title": "MyTaskGroup",
         "type": "object"
       },
@@ -873,7 +1052,9 @@
             "type": "array"
           }
         },
-        "required": ["groups"],
+        "required": [
+          "groups"
+        ],
         "title": "MyTasksResponse",
         "type": "object"
       },
@@ -906,7 +1087,12 @@
             "title": "Detail"
           },
           "event_type": {
-            "enum": ["mention", "task_assigned", "task_status_changed", "task_commented"],
+            "enum": [
+              "mention",
+              "task_assigned",
+              "task_status_changed",
+              "task_commented"
+            ],
             "title": "Event Type",
             "type": "string"
           },
@@ -984,7 +1170,10 @@
             "type": "string"
           }
         },
-        "required": ["id", "title"],
+        "required": [
+          "id",
+          "title"
+        ],
         "title": "NotificationTaskRefDTO",
         "type": "object"
       },
@@ -1014,7 +1203,10 @@
             "type": "string"
           }
         },
-        "required": ["token", "new_password"],
+        "required": [
+          "token",
+          "new_password"
+        ],
         "title": "PasswordResetConfirm",
         "type": "object"
       },
@@ -1026,7 +1218,9 @@
             "type": "string"
           }
         },
-        "required": ["email"],
+        "required": [
+          "email"
+        ],
         "title": "PasswordResetRequest",
         "type": "object"
       },
@@ -1104,7 +1298,9 @@
             "$ref": "#/components/schemas/UserSummary"
           }
         },
-        "required": ["user"],
+        "required": [
+          "user"
+        ],
         "title": "ProjectMemberDTO",
         "type": "object"
       },
@@ -1120,7 +1316,10 @@
             "type": "string"
           }
         },
-        "required": ["id", "name"],
+        "required": [
+          "id",
+          "name"
+        ],
         "title": "ProjectRefDTO",
         "type": "object"
       },
@@ -1130,7 +1329,9 @@
             "$ref": "#/components/schemas/InvitationDTO"
           }
         },
-        "required": ["invitation"],
+        "required": [
+          "invitation"
+        ],
         "title": "ResendInvitationResponse",
         "type": "object"
       },
@@ -1144,7 +1345,9 @@
             "type": "array"
           }
         },
-        "required": ["results"],
+        "required": [
+          "results"
+        ],
         "title": "SearchResponse",
         "type": "object"
       },
@@ -1154,7 +1357,14 @@
             "$ref": "#/components/schemas/ProjectRefDTO"
           },
           "status": {
-            "enum": ["backlog", "todo", "in_progress", "in_review", "done", "cancelled"],
+            "enum": [
+              "backlog",
+              "todo",
+              "in_progress",
+              "in_review",
+              "done",
+              "cancelled"
+            ],
             "title": "Status",
             "type": "string"
           },
@@ -1168,7 +1378,12 @@
             "type": "string"
           }
         },
-        "required": ["task_id", "title", "status", "project"],
+        "required": [
+          "task_id",
+          "title",
+          "status",
+          "project"
+        ],
         "title": "SearchResult",
         "type": "object"
       },
@@ -1180,12 +1395,20 @@
             "type": "string"
           },
           "role": {
-            "enum": ["owner", "admin", "member", "viewer"],
+            "enum": [
+              "owner",
+              "admin",
+              "member",
+              "viewer"
+            ],
             "title": "Role",
             "type": "string"
           }
         },
-        "required": ["email", "role"],
+        "required": [
+          "email",
+          "role"
+        ],
         "title": "SendInvitationRequest",
         "type": "object"
       },
@@ -1195,7 +1418,9 @@
             "$ref": "#/components/schemas/InvitationDTO"
           }
         },
-        "required": ["invitation"],
+        "required": [
+          "invitation"
+        ],
         "title": "SendInvitationResponse",
         "type": "object"
       },
@@ -1225,7 +1450,12 @@
             "type": "string"
           }
         },
-        "required": ["email", "password", "display_name", "workspace_name"],
+        "required": [
+          "email",
+          "password",
+          "display_name",
+          "workspace_name"
+        ],
         "title": "SignupRequest",
         "type": "object"
       },
@@ -1235,7 +1465,9 @@
             "$ref": "#/components/schemas/CurrentUser"
           }
         },
-        "required": ["user"],
+        "required": [
+          "user"
+        ],
         "title": "SignupResponse",
         "type": "object"
       },
@@ -1332,7 +1564,13 @@
             "type": "array"
           },
           "priority": {
-            "enum": ["none", "low", "medium", "high", "urgent"],
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ],
             "title": "Priority",
             "type": "string"
           },
@@ -1340,7 +1578,14 @@
             "$ref": "#/components/schemas/ProjectRefDTO"
           },
           "status": {
-            "enum": ["backlog", "todo", "in_progress", "in_review", "done", "cancelled"],
+            "enum": [
+              "backlog",
+              "todo",
+              "in_progress",
+              "in_review",
+              "done",
+              "cancelled"
+            ],
             "title": "Status",
             "type": "string"
           },
@@ -1412,7 +1657,13 @@
             "type": "array"
           },
           "priority": {
-            "enum": ["none", "low", "medium", "high", "urgent"],
+            "enum": [
+              "none",
+              "low",
+              "medium",
+              "high",
+              "urgent"
+            ],
             "title": "Priority",
             "type": "string"
           },
@@ -1420,7 +1671,14 @@
             "$ref": "#/components/schemas/ProjectRefDTO"
           },
           "status": {
-            "enum": ["backlog", "todo", "in_progress", "in_review", "done", "cancelled"],
+            "enum": [
+              "backlog",
+              "todo",
+              "in_progress",
+              "in_review",
+              "done",
+              "cancelled"
+            ],
             "title": "Status",
             "type": "string"
           },
@@ -1450,7 +1708,9 @@
             "type": "integer"
           }
         },
-        "required": ["count"],
+        "required": [
+          "count"
+        ],
         "title": "UnreadCountResponse",
         "type": "object"
       },
@@ -1463,7 +1723,9 @@
             "type": "string"
           }
         },
-        "required": ["body"],
+        "required": [
+          "body"
+        ],
         "title": "UpdateCommentRequest",
         "type": "object"
       },
@@ -1472,7 +1734,16 @@
           "color": {
             "anyOf": [
               {
-                "enum": ["blue", "green", "red", "purple", "amber", "pink", "cyan", "orange"],
+                "enum": [
+                  "blue",
+                  "green",
+                  "red",
+                  "purple",
+                  "amber",
+                  "pink",
+                  "cyan",
+                  "orange"
+                ],
                 "type": "string"
               },
               {
@@ -1507,7 +1778,9 @@
             "type": "string"
           }
         },
-        "required": ["display_name"],
+        "required": [
+          "display_name"
+        ],
         "title": "UpdateProfileRequest",
         "type": "object"
       },
@@ -1556,12 +1829,21 @@
       "UpdateStatusRequest": {
         "properties": {
           "status": {
-            "enum": ["backlog", "todo", "in_progress", "in_review", "done", "cancelled"],
+            "enum": [
+              "backlog",
+              "todo",
+              "in_progress",
+              "in_review",
+              "done",
+              "cancelled"
+            ],
             "title": "Status",
             "type": "string"
           }
         },
-        "required": ["status"],
+        "required": [
+          "status"
+        ],
         "title": "UpdateStatusRequest",
         "type": "object"
       },
@@ -1621,7 +1903,13 @@
           "priority": {
             "anyOf": [
               {
-                "enum": ["none", "low", "medium", "high", "urgent"],
+                "enum": [
+                  "none",
+                  "low",
+                  "medium",
+                  "high",
+                  "urgent"
+                ],
                 "type": "string"
               },
               {
@@ -1656,7 +1944,9 @@
             "type": "string"
           }
         },
-        "required": ["name"],
+        "required": [
+          "name"
+        ],
         "title": "UpdateWorkspaceRequest",
         "type": "object"
       },
@@ -1693,7 +1983,11 @@
             "type": "string"
           }
         },
-        "required": ["id", "initials", "avatar_color"],
+        "required": [
+          "id",
+          "initials",
+          "avatar_color"
+        ],
         "title": "UserSummary",
         "type": "object"
       },
@@ -1729,7 +2023,11 @@
             "type": "string"
           }
         },
-        "required": ["loc", "msg", "type"],
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
         "title": "ValidationError",
         "type": "object"
       },
@@ -1750,7 +2048,11 @@
             "type": "string"
           }
         },
-        "required": ["id", "name", "created_at"],
+        "required": [
+          "id",
+          "name",
+          "created_at"
+        ],
         "title": "WorkspaceDTO",
         "type": "object"
       }
@@ -1833,7 +2135,9 @@
           }
         },
         "summary": "List Activity",
-        "tags": ["activity"]
+        "tags": [
+          "activity"
+        ]
       }
     },
     "/api/v1/auth/accept-invitation": {
@@ -1872,7 +2176,9 @@
           }
         },
         "summary": "Accept Invitation",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/change-password": {
@@ -1911,7 +2217,51 @@
           }
         },
         "summary": "Change Password",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/api/v1/auth/invitations/{token}": {
+      "get": {
+        "operationId": "preview_invitation_api_v1_auth_invitations__token__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationPreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Invitation",
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/login": {
@@ -1950,7 +2300,9 @@
           }
         },
         "summary": "Login",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/logout": {
@@ -1969,7 +2321,9 @@
           }
         },
         "summary": "Logout",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/me": {
@@ -2008,7 +2362,9 @@
           }
         },
         "summary": "Delete Me",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       },
       "get": {
         "operationId": "read_me_api_v1_auth_me_get",
@@ -2025,7 +2381,9 @@
           }
         },
         "summary": "Read Me",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       },
       "patch": {
         "operationId": "update_me_api_v1_auth_me_patch",
@@ -2062,7 +2420,9 @@
           }
         },
         "summary": "Update Me",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/password-reset/confirm": {
@@ -2101,7 +2461,9 @@
           }
         },
         "summary": "Password Reset Confirm",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/password-reset/request": {
@@ -2140,7 +2502,9 @@
           }
         },
         "summary": "Password Reset Request",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/auth/signup": {
@@ -2179,7 +2543,9 @@
           }
         },
         "summary": "Signup",
-        "tags": ["auth"]
+        "tags": [
+          "auth"
+        ]
       }
     },
     "/api/v1/comments/{comment_id}": {
@@ -2220,7 +2586,9 @@
           }
         },
         "summary": "Delete Comment Endpoint",
-        "tags": ["comments"]
+        "tags": [
+          "comments"
+        ]
       },
       "patch": {
         "operationId": "update_comment_endpoint_api_v1_comments__comment_id__patch",
@@ -2269,7 +2637,9 @@
           }
         },
         "summary": "Update Comment Endpoint",
-        "tags": ["comments"]
+        "tags": [
+          "comments"
+        ]
       }
     },
     "/api/v1/dashboard/my-tasks": {
@@ -2288,7 +2658,9 @@
           }
         },
         "summary": "My Tasks Endpoint",
-        "tags": ["dashboard"]
+        "tags": [
+          "dashboard"
+        ]
       }
     },
     "/api/v1/dashboard/projects": {
@@ -2307,7 +2679,9 @@
           }
         },
         "summary": "Dashboard Projects Endpoint",
-        "tags": ["dashboard"]
+        "tags": [
+          "dashboard"
+        ]
       }
     },
     "/api/v1/labels": {
@@ -2326,7 +2700,9 @@
           }
         },
         "summary": "List Labels",
-        "tags": ["labels"]
+        "tags": [
+          "labels"
+        ]
       },
       "post": {
         "operationId": "create_label_api_v1_labels_post",
@@ -2363,7 +2739,9 @@
           }
         },
         "summary": "Create Label",
-        "tags": ["labels"]
+        "tags": [
+          "labels"
+        ]
       }
     },
     "/api/v1/labels/{label_id}": {
@@ -2404,7 +2782,9 @@
           }
         },
         "summary": "Delete Label",
-        "tags": ["labels"]
+        "tags": [
+          "labels"
+        ]
       },
       "patch": {
         "operationId": "update_label_api_v1_labels__label_id__patch",
@@ -2453,7 +2833,9 @@
           }
         },
         "summary": "Update Label",
-        "tags": ["labels"]
+        "tags": [
+          "labels"
+        ]
       }
     },
     "/api/v1/notifications": {
@@ -2510,7 +2892,9 @@
           }
         },
         "summary": "List Notifications Endpoint",
-        "tags": ["notifications"]
+        "tags": [
+          "notifications"
+        ]
       }
     },
     "/api/v1/notifications/mark-all-read": {
@@ -2529,7 +2913,9 @@
           }
         },
         "summary": "Mark All Read Endpoint",
-        "tags": ["notifications"]
+        "tags": [
+          "notifications"
+        ]
       }
     },
     "/api/v1/notifications/unread-count": {
@@ -2548,7 +2934,9 @@
           }
         },
         "summary": "Unread Count Endpoint",
-        "tags": ["notifications"]
+        "tags": [
+          "notifications"
+        ]
       }
     },
     "/api/v1/notifications/{notification_id}/read": {
@@ -2589,7 +2977,9 @@
           }
         },
         "summary": "Mark One Read Endpoint",
-        "tags": ["notifications"]
+        "tags": [
+          "notifications"
+        ]
       }
     },
     "/api/v1/projects": {
@@ -2608,7 +2998,9 @@
           }
         },
         "summary": "List Projects",
-        "tags": ["projects"]
+        "tags": [
+          "projects"
+        ]
       },
       "post": {
         "operationId": "create_project_api_v1_projects_post",
@@ -2645,7 +3037,9 @@
           }
         },
         "summary": "Create Project",
-        "tags": ["projects"]
+        "tags": [
+          "projects"
+        ]
       }
     },
     "/api/v1/projects/{project_id}": {
@@ -2686,7 +3080,9 @@
           }
         },
         "summary": "Read Project",
-        "tags": ["projects"]
+        "tags": [
+          "projects"
+        ]
       },
       "patch": {
         "operationId": "update_project_api_v1_projects__project_id__patch",
@@ -2735,7 +3131,9 @@
           }
         },
         "summary": "Update Project",
-        "tags": ["projects"]
+        "tags": [
+          "projects"
+        ]
       }
     },
     "/api/v1/projects/{project_id}/access": {
@@ -2776,7 +3174,9 @@
           }
         },
         "summary": "List Project Access",
-        "tags": ["projects"]
+        "tags": [
+          "projects"
+        ]
       },
       "post": {
         "operationId": "grant_project_access_api_v1_projects__project_id__access_post",
@@ -2825,7 +3225,9 @@
           }
         },
         "summary": "Grant Project Access",
-        "tags": ["projects"]
+        "tags": [
+          "projects"
+        ]
       }
     },
     "/api/v1/projects/{project_id}/access/{user_id}": {
@@ -2876,7 +3278,9 @@
           }
         },
         "summary": "Revoke Project Access",
-        "tags": ["projects"]
+        "tags": [
+          "projects"
+        ]
       }
     },
     "/api/v1/projects/{project_id}/tasks": {
@@ -3057,7 +3461,9 @@
           }
         },
         "summary": "List Project Tasks",
-        "tags": ["tasks"]
+        "tags": [
+          "tasks"
+        ]
       },
       "post": {
         "operationId": "create_project_task_api_v1_projects__project_id__tasks_post",
@@ -3106,7 +3512,9 @@
           }
         },
         "summary": "Create Project Task",
-        "tags": ["tasks"]
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/api/v1/search": {
@@ -3157,7 +3565,9 @@
           }
         },
         "summary": "Search Endpoint",
-        "tags": ["search"]
+        "tags": [
+          "search"
+        ]
       }
     },
     "/api/v1/tasks/{task_id}": {
@@ -3198,7 +3608,9 @@
           }
         },
         "summary": "Read Task",
-        "tags": ["tasks"]
+        "tags": [
+          "tasks"
+        ]
       },
       "patch": {
         "operationId": "update_task_endpoint_api_v1_tasks__task_id__patch",
@@ -3247,7 +3659,9 @@
           }
         },
         "summary": "Update Task Endpoint",
-        "tags": ["tasks"]
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/api/v1/tasks/{task_id}/comments": {
@@ -3288,7 +3702,9 @@
           }
         },
         "summary": "List Comments",
-        "tags": ["comments"]
+        "tags": [
+          "comments"
+        ]
       },
       "post": {
         "operationId": "create_comment_api_v1_tasks__task_id__comments_post",
@@ -3337,7 +3753,9 @@
           }
         },
         "summary": "Create Comment",
-        "tags": ["comments"]
+        "tags": [
+          "comments"
+        ]
       }
     },
     "/api/v1/tasks/{task_id}/status": {
@@ -3388,7 +3806,9 @@
           }
         },
         "summary": "Update Task Status",
-        "tags": ["tasks"]
+        "tags": [
+          "tasks"
+        ]
       }
     },
     "/api/v1/workspaces/me": {
@@ -3407,7 +3827,9 @@
           }
         },
         "summary": "Read Workspace",
-        "tags": ["workspaces"]
+        "tags": [
+          "workspaces"
+        ]
       },
       "patch": {
         "operationId": "update_workspace_api_v1_workspaces_me_patch",
@@ -3444,7 +3866,9 @@
           }
         },
         "summary": "Update Workspace",
-        "tags": ["workspaces"]
+        "tags": [
+          "workspaces"
+        ]
       }
     },
     "/api/v1/workspaces/me/invitations": {
@@ -3463,7 +3887,9 @@
           }
         },
         "summary": "List Invitations",
-        "tags": ["workspaces"]
+        "tags": [
+          "workspaces"
+        ]
       },
       "post": {
         "operationId": "send_invitation_api_v1_workspaces_me_invitations_post",
@@ -3500,7 +3926,9 @@
           }
         },
         "summary": "Send Invitation",
-        "tags": ["workspaces"]
+        "tags": [
+          "workspaces"
+        ]
       }
     },
     "/api/v1/workspaces/me/invitations/{invitation_id}/resend": {
@@ -3541,7 +3969,9 @@
           }
         },
         "summary": "Resend Invitation",
-        "tags": ["workspaces"]
+        "tags": [
+          "workspaces"
+        ]
       }
     },
     "/api/v1/workspaces/me/members": {
@@ -3560,7 +3990,9 @@
           }
         },
         "summary": "List Members",
-        "tags": ["workspaces"]
+        "tags": [
+          "workspaces"
+        ]
       }
     },
     "/api/v1/workspaces/me/members/{user_id}": {
@@ -3601,7 +4033,9 @@
           }
         },
         "summary": "Remove Member",
-        "tags": ["workspaces"]
+        "tags": [
+          "workspaces"
+        ]
       },
       "patch": {
         "operationId": "change_member_role_api_v1_workspaces_me_members__user_id__patch",
@@ -3650,7 +4084,9 @@
           }
         },
         "summary": "Change Member Role",
-        "tags": ["workspaces"]
+        "tags": [
+          "workspaces"
+        ]
       }
     },
     "/health": {
@@ -3670,7 +4106,9 @@
           }
         },
         "summary": "Health",
-        "tags": ["health"]
+        "tags": [
+          "health"
+        ]
       }
     }
   }

@@ -18,6 +18,7 @@ from taskflow.schemas.auth import (
     AcceptInvitationResponse,
     ChangePasswordRequest,
     DeleteAccountRequest,
+    InvitationPreviewResponse,
     LoginRequest,
     LoginResponse,
     OkResponse,
@@ -27,9 +28,10 @@ from taskflow.schemas.auth import (
     SignupResponse,
     UpdateProfileRequest,
 )
-from taskflow.schemas.users import CurrentUser, current_user_dto
+from taskflow.schemas.users import CurrentUser, current_user_dto, user_summary
 from taskflow.services import auth as auth_service
 from taskflow.services.emails import send_password_reset_email
+from taskflow.services.invitations import derive_status
 from taskflow.settings import settings
 
 _login_email_key = email_key_factory("email")
@@ -225,6 +227,26 @@ async def delete_me(
 # ──────────────────────────────────────────────────────────────────────────────
 # Invitation acceptance
 # ──────────────────────────────────────────────────────────────────────────────
+
+
+@router.get("/invitations/{token}", response_model=InvitationPreviewResponse)
+async def preview_invitation(token: str, db: DbDep) -> InvitationPreviewResponse:
+    invitation, workspace_name, inviter, existing_user = await auth_service.preview_invitation(
+        db, raw_token=token
+    )
+    return InvitationPreviewResponse(
+        workspace_name=workspace_name,
+        email=invitation.email,
+        role=invitation.role,
+        invited_by=(
+            user_summary(inviter.id, inviter.name, deleted=inviter.deleted_at is not None)
+            if inviter is not None
+            else None
+        ),
+        # The service rejects accepted/missing tokens, so only two states remain.
+        status=derive_status(invitation),
+        existing_user=existing_user,
+    )
 
 
 @router.post("/accept-invitation", response_model=AcceptInvitationResponse)

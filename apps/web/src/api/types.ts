@@ -22,6 +22,7 @@ export type {
   GrantProjectAccessRequest,
   GrantProjectAccessResponse,
   Invitation,
+  InvitationPreview,
   Label,
   ListActivityResponse,
   ListCommentsResponse,

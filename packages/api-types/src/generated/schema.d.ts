@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/invitations/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Preview Invitation */
+        get: operations["preview_invitation_api_v1_auth_invitations__token__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/login": {
         parameters: {
             query?: never;
@@ -815,6 +832,32 @@ export interface components {
              */
             status: "pending" | "accepted" | "expired";
         };
+        /**
+         * InvitationPreviewResponse
+         * @description Pre-acceptance invitation preview (DRD §8.2).
+         */
+        InvitationPreviewResponse: {
+            /**
+             * Email
+             * Format: email
+             */
+            email: string;
+            /** Existing User */
+            existing_user: boolean;
+            invited_by: components["schemas"]["UserSummary"] | null;
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "owner" | "admin" | "member" | "viewer";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "expired";
+            /** Workspace Name */
+            workspace_name: string;
+        };
         /** LabelDTO */
         LabelDTO: {
             /**
@@ -1407,6 +1450,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OkResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_invitation_api_v1_auth_invitations__token__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationPreviewResponse"];
                 };
             };
             /** @description Validation Error */

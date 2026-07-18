@@ -32,6 +32,7 @@ export type DeleteAccountRequest = Schemas['DeleteAccountRequest'];
 export type GrantProjectAccessRequest = Schemas['GrantProjectAccessRequest'];
 export type GrantProjectAccessResponse = Schemas['GrantProjectAccessResponse'];
 export type Invitation = Schemas['InvitationDTO'];
+export type InvitationPreview = Schemas['InvitationPreviewResponse'];
 export type Label = Schemas['LabelDTO'];
 export type ListActivityResponse = Schemas['ListActivityResponse'];
 export type ListCommentsResponse = Schemas['ListCommentsResponse'];

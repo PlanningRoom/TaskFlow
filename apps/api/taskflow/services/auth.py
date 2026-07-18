@@ -295,6 +295,34 @@ async def delete_account(
 # ──────────────────────────────────────────────────────────────────────────────
 
 
+async def preview_invitation(
+    db: AsyncSession, *, raw_token: str
+) -> tuple[Invitation, str, User | None, bool]:
+    """Resolve an invitation token for the pre-acceptance preview (DRD §8.2).
+
+    Returns the invitation, the workspace name, the inviter (if resolvable),
+    and whether a live account already exists for the invited email — the
+    frontend uses that flag to skip the new-account fields.
+
+    Missing and already-accepted tokens both raise ``InvalidTokenError`` so the
+    preview reveals nothing the accept endpoint wouldn't; expired invitations
+    are returned (status ``expired``) so the screen can offer a way back.
+    """
+    token_hash = hash_token(raw_token)
+    invitation = await db.scalar(select(Invitation).where(Invitation.token_hash == token_hash))
+    if invitation is None or invitation.accepted_at is not None:
+        raise InvalidTokenError("Invitation is invalid or already accepted.")
+
+    workspace_name = await db.scalar(
+        select(Workspace.name).where(Workspace.id == invitation.workspace_id)
+    )
+    inviter = await db.scalar(select(User).where(User.id == invitation.invited_by))
+    existing_id = await db.scalar(
+        select(User.id).where(User.email.ilike(invitation.email), User.deleted_at.is_(None))
+    )
+    return invitation, workspace_name or "", inviter, existing_id is not None
+
+
 async def accept_invitation(
     db: AsyncSession,
     *,
