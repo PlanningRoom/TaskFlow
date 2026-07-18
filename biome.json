@@ -15,6 +15,7 @@
       "!**/node_modules",
       "!**/.turbo",
       "!**/generated",
+      "!**/packages/api-types/openapi.json",
       "!**/apps/api",
       "!**/infra",
       "!**/docs",

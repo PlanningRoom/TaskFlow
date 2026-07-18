@@ -1,4 +1,6 @@
-FROM --platform=linux/arm64 python:3.12-slim AS base
+# Production images are built linux/arm64 by deploy.yml (buildx --platform, ADR 038);
+# no platform pin here so CI runners and local hosts build their native arch.
+FROM python:3.12-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

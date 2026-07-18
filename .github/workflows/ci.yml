@@ -171,6 +171,23 @@ jobs:
         # dips below it (Phase H5). Runs well under the 5-minute budget.
         run: pnpm --filter @taskflow/web test -- --coverage
 
+  build-images:
+    name: Build images
+    runs-on: ubuntu-latest
+    # TDD §14.1: catch a broken Dockerfile in CI rather than at deploy time.
+    # Builds run on the runner's native arch; the production linux/arm64 build
+    # is exercised by deploy.yml (buildx + QEMU, ADR 038).
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build api image
+        run: docker build -t taskflow/api:ci apps/api
+
+      - name: Build web image
+        # Same context/Dockerfile split as deploy.yml — the web image needs the
+        # repo root for the pnpm workspace files.
+        run: docker build -f apps/web/Dockerfile -t taskflow/web:ci .
+
   nginx-config:
     name: nginx -t
     runs-on: ubuntu-latest

@@ -1,0 +1,14 @@
+# Context for apps/web/Dockerfile (repo root — pnpm workspace files).
+# Host artifacts must never leak into the image: node_modules contains
+# host-native binaries, and the image installs its own from the lockfile.
+.git
+**/node_modules
+**/.turbo
+**/dist
+**/coverage
+apps/api/.venv
+apps/api/**/__pycache__
+e2e/playwright-report
+e2e/test-results
+docs
+episodes
