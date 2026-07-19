@@ -48,7 +48,8 @@ function taskTarget(event: ActivityEvent): { projectId: string; taskId: string }
   return taskId ? { projectId: event.project.id, taskId } : null;
 }
 
-function ActivityRow({ event }: { event: ActivityEvent }) {
+/** One feed row (avatar + sentence + relative time). Shared with the project-scope panel. */
+export function ActivityRow({ event }: { event: ActivityEvent }) {
   const intl = useIntl();
   const target = useMemo(() => taskTarget(event), [event]);
   const actorName =

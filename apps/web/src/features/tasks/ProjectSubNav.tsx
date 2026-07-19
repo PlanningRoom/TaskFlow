@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useIntl } from 'react-intl';
 import type { CurrentUser } from '@/api/types';
 import {
@@ -13,11 +14,13 @@ import {
   Check,
   ChevronDown,
   Filter,
+  History,
   LayoutGrid,
   List,
   Plus,
   Settings,
 } from '@/components/ui/icons';
+import { ProjectActivityPanel } from '@/features/activity/ProjectActivityPanel';
 import { ProjectSettingsModal } from '@/features/projects/ProjectSettingsModal';
 import { useLabels } from '@/features/settings/useLabels';
 import { useMembers } from '@/features/settings/useMembers';
@@ -66,6 +69,7 @@ export function ProjectSubNav({
   const intl = useIntl();
   const canEdit = role !== 'viewer';
   const canManage = role === 'owner' || role === 'admin';
+  const [activityOpen, setActivityOpen] = useState(false);
 
   return (
     <div className="border-b border-border bg-bg-card">
@@ -78,6 +82,17 @@ export function ProjectSubNav({
           onChange={(sort) => onSearchChange({ ...search, sort })}
         />
         <div className="ms-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setActivityOpen(true)}
+            className="rounded-sm p-1.5 text-text-tertiary hover:bg-bg-hover hover:text-text-primary"
+            aria-label={intl.formatMessage({ id: 'project.activity.title' })}
+          >
+            <History size={18} strokeWidth={1.75} />
+          </button>
+          {activityOpen ? (
+            <ProjectActivityPanel projectId={projectId} onClose={() => setActivityOpen(false)} />
+          ) : null}
           {canManage ? (
             <ProjectSettingsModal
               projectId={projectId}
