@@ -1,28 +1,28 @@
 # TaskFlow Continuous Deployment (Phase I3 / TDD §14.2).
 #
-# Takes a merge to `main` all the way to the running EC2 host: build arm64
+# Takes a deploy request all the way to the running EC2 host: build arm64
 # images -> push to ECR -> (optionally) reconcile CloudFormation -> sync the
 # non-secret host config -> migrate -> roll the compose stack -> smoke-check.
 #
 # Security model (ADR 073 / TDD §14.3):
 #   - Auth is GitHub OIDC only. No long-lived AWS keys exist anywhere; the sole
 #     repo secret is AWS_DEPLOY_ROLE_ARN — an ARN, not a credential.
-#   - Triggers are push-to-main and manual dispatch ONLY, never pull_request:
-#     this is a public repo, and a fork PR must never be able to assume the
-#     deploy role.
+#   - Trigger is manual dispatch ONLY, never pull_request: this is a public
+#     repo, and a fork PR must never be able to assume the deploy role.
 #   - Runtime secrets never pass through this workflow. The host already
 #     hydrates /opt/taskflow/.env from SSM Parameter Store at boot
 #     (infra/ec2/user-data.sh); the pipeline only ships non-secret config
 #     (docker-compose.prod.yml, nginx.conf). TLS certs are operator-placed.
 #
-# No AWS account exists in this environment yet, so the first real run is the
-# I4 cutover; this file is authored and statically validated for now.
+# TaskFlow is a demonstration project: the production cutover (Phase I4) is
+# permanently out of scope, so this workflow never runs automatically. It was
+# originally triggered on push-to-main; that trigger was removed 2026-07-19 so
+# a repo without an AWS account doesn't accumulate failed runs. The file stays
+# as reference CD code, statically validated (shellcheck / bash -n / cfn-lint).
 
 name: Deploy
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
     inputs:
       image_tag:
@@ -53,9 +53,8 @@ jobs:
     timeout-minutes: 20
     # Gate on the `production` GitHub environment (ADR 073): the deploy pauses
     # for the required-reviewer approval configured on that environment before
-    # any image is built or the host is touched. The trigger still fires on
-    # push-to-main, but the roll-out waits for a human. Secrets may be scoped to
-    # this environment too.
+    # any image is built or the host is touched. Secrets may be scoped to this
+    # environment too.
     environment: production
     steps:
       - uses: actions/checkout@v4

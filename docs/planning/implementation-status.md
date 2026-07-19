@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
-**Last Updated:** 2026-07-18
-**Current Phase:** Part I in progress — I1 + I2 + I3 complete; I4 (Production Cutover) next — needs a live AWS account. Pre-I4 loose-ends pass landed 2026-07-18 (see Notes): main CI unbroken, deferred responsive/invitation-preview/@mention-chip/project-activity work closed.
+**Last Updated:** 2026-07-19
+**Current Phase:** Part I — I1 + I2 + I3 complete; **I4 + I5 permanently out of scope** (2026-07-19: TaskFlow is a demonstration project — no production cutover; see Notes). I6 (Final Acceptance) is next, reframed against the local docker compose stack.
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -40,6 +40,7 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | `[~]` | In progress |
 | `[x]` | Complete |
 | `[!]` | Blocked |
+| `[-]` | Out of scope (permanently skipped) |
 
 ---
 
@@ -57,6 +58,8 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | H | Frontend Cross-Cutting | 5 | 5 | 0 | 0 |
 | I | E2E, Infra, Deploy | 6 | 3 | 0 | 0 |
 | **Total** | | **42** | **39** | **0** | **0** |
+
+Of the 3 remaining Part I phases, **I4 and I5 are permanently out of scope** (demonstration project, no production deployment — decided 2026-07-19, see Notes). The only remaining in-scope phase is **I6**, run against the local docker compose stack. In-scope total: **39 of 40 complete**.
 
 ---
 
@@ -493,29 +496,39 @@ end-to-end "trivial change reaches the host + smoke passes" DoD is necessarily a
 - [x] Health smoke check from workflow — host-local `curl -fsSk https://localhost/health` retry loop inside the same SSM command (nginx 80→443 redirect + origin cert ⇒ `-k`); the workflow polls `get-command-invocation` and fails the job unless `Status == Success`
 - [x] Rollback procedure documented in runbook — §7 now leads with the pipeline path (`workflow_dispatch` + `image_tag=<prior-sha>`); manual host roll kept as fallback
 
-#### Phase I4 — Production Cutover `[ ] Not started`
-- [ ] All SSM Parameter Store values populated
-- [ ] First deploy succeeds
-- [ ] Cloudflare Origin CA cert installed + edge TLS (Full strict) verified
-- [ ] Cloudflare proxied `A` record cut to Elastic IP; Resend email delivers (SPF/DKIM/DMARC live)
-- [ ] Manual smoke (signup → project → task → invite → real-time)
-- [ ] SSL Labs grade ≥A
-- [ ] Mozilla Observatory grade ≥A
+#### Phase I4 — Production Cutover `[-] Out of scope`
 
-#### Phase I5 — Monitoring and Alarm Verification `[ ] Not started`
-- [ ] Operator email subscribed to `taskflow-alerts` SNS
-- [ ] Each alarm condition synthesized + verified
-- [ ] CloudWatch log groups receiving from all containers
-- [ ] Metric filter regexes verified against real log lines
-- [ ] Runbook updated
+**Decided 2026-07-19:** TaskFlow is a demonstration project (public GitHub repo + videos); there will be no production deployment, so the live AWS/Cloudflare/Resend cutover is permanently skipped. The I2/I3 artifacts (CloudFormation templates, `deploy.yml`, runbook) remain in the repo as statically-validated reference material. `deploy.yml`'s push-to-`main` trigger was removed the same day so the public repo doesn't accumulate failed runs — it is `workflow_dispatch`-only now.
+
+- [-] All SSM Parameter Store values populated
+- [-] First deploy succeeds
+- [-] Cloudflare Origin CA cert installed + edge TLS (Full strict) verified
+- [-] Cloudflare proxied `A` record cut to Elastic IP; Resend email delivers (SPF/DKIM/DMARC live)
+- [-] Manual smoke (signup → project → task → invite → real-time)
+- [-] SSL Labs grade ≥A
+- [-] Mozilla Observatory grade ≥A
+
+#### Phase I5 — Monitoring and Alarm Verification `[-] Out of scope`
+
+**Decided 2026-07-19:** requires the live AWS account from I4; skipped with it (see I4 note).
+
+- [-] Operator email subscribed to `taskflow-alerts` SNS
+- [-] Each alarm condition synthesized + verified
+- [-] CloudWatch log groups receiving from all containers
+- [-] Metric filter regexes verified against real log lines
+- [-] Runbook updated
 
 #### Phase I6 — Final Acceptance and Documentation `[ ] Not started`
-- [ ] PRD walkthrough against live system
+
+**Reframed 2026-07-19:** with I4/I5 out of scope, acceptance runs against the local docker compose stack (seeded), not a live deployment.
+
+- [ ] PRD walkthrough against the local docker compose stack
 - [ ] DRD page-spec walkthrough
 - [ ] All empty states verified
-- [ ] `README.md` updated (run, deploy, seed)
-- [ ] This status file marked 100% complete
+- [ ] `README.md` updated (run, seed; deploy section reframed as reference-only)
+- [ ] This status file marked complete (all in-scope phases)
 - [ ] Release note authored
+- [ ] Carried-over pre-launch loose ends dispositioned: D1 50-connection WS load smoke (runnable locally), manual a11y checklist (`apps/web/docs/a11y-manual-checklist.md`)
 
 ---
 
@@ -534,6 +547,29 @@ These were surfaced during plan validation (§6.4 of the implementation plan). R
 ## Notes
 
 Use this section as a running log of decisions, blockers, or context that should persist across sessions.
+
+### 2026-07-19 — I4/I5 permanently out of scope; deploy.yml is dispatch-only
+
+TaskFlow is a demonstration project: the code goes on public GitHub and is used
+for videos, but is never deployed to production. Decision (with user):
+
+- **Phase I4 (Production Cutover) and I5 (Monitoring Verification) are
+  permanently skipped** — both need a live AWS account that will never exist.
+  New `[-]` status marker added to the legend for this. In-scope plan is now
+  40 phases, 39 complete; **I6 is the only remaining phase**, reframed to run
+  acceptance against the local docker compose stack.
+- **`deploy.yml` no longer triggers on push-to-`main`** — with no
+  `AWS_DEPLOY_ROLE_ARN` secret, every push would have produced a failed (or
+  forever-"waiting") run on the public repo. It is `workflow_dispatch`-only
+  now and stays in the repo as reference CD code; header comments updated.
+  All I2/I3 infra artifacts (CloudFormation, runbook, prod compose) likewise
+  remain as statically-validated reference material. The `cfn-lint`,
+  `build-images`, and all `ci.yml` jobs continue to run and gate as before.
+- Everything runs locally without I4: dev email lands in MailHog, real-time is
+  the Postgres-backed broadcaster, and the E2E suite already exercises the
+  full compose stack.
+- The two carried-over loose ends (D1 WS load smoke, manual a11y checklist)
+  are now tracked as I6 checklist items rather than "before I4" work.
 
 ### 2026-07-18 — Pre-I4 loose-ends pass (CI unbroken + deferred items closed)
 
