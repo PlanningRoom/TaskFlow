@@ -586,7 +586,7 @@ All collaborative data updates in real time without requiring a manual page refr
 ### 20.1 Profile Settings
 
 - Users can update their display name and password.
-- Email address is displayed but changing it is an implementation detail.
+- Email address is displayed read-only; changing it is **not exposed in v1** (confirmed 2026-07-18, closing implementation-plan Open Item #2 — revisit post-v1).
 
 ### 20.2 Account Deletion
 

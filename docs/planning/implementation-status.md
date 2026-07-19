@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
-**Last Updated:** 2026-06-28
-**Current Phase:** Part I in progress — I1 + I2 + I3 complete (see Notes 2026-06-28); I4 (Production Cutover) next — needs a live AWS account
+**Last Updated:** 2026-07-18
+**Current Phase:** Part I in progress — I1 + I2 + I3 complete; I4 (Production Cutover) next — needs a live AWS account. Pre-I4 loose-ends pass landed 2026-07-18 (see Notes): main CI unbroken, deferred responsive/invitation-preview/@mention-chip/project-activity work closed.
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -313,7 +313,7 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 - [x] Sidebar: logo, primary nav, projects, bottom (Settings + user identity)
 - [x] Header: breadcrumb, search, notification bell, user avatar
 - [x] Logo + wordmark per DRD §5
-- [~] Responsive shell — desktop + sidebar-hidden-below-`md` implemented; tablet icon rail (`Sidebar collapsed` prop exists) + mobile hamburger overlay polish deferred to a later phase (see F4 note)
+- [x] Responsive shell — **completed 2026-07-18 (loose-ends pass):** tablet icon rail active (`useMediaQuery` picks `Sidebar collapsed` at 768–1023px) and mobile hamburger overlay in the header below `md` (backdrop / Esc / link-click dismiss)
 - [x] Route tree per screen inventory §3 (placeholders for all routes)
 - [x] `/projects/:projectId` redirect → `/projects/:projectId/board`
 - [x] Unauthenticated routes (`/login`, `/signup`, `/invitations/:token`) rendered outside the shell
@@ -326,7 +326,7 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 #### Phase G1 — Auth Screens `[x] Complete`
 - [x] Login screen (DRD §8.1)
 - [x] Signup screen (PRD §3.1)
-- [x] Accept-invitation screen — **blind accept form** (see G1 note: no backend invitation-preview endpoint, so workspace/role/inviter preview, email prefill, and new-vs-existing branching are deferred); expired/invalid token states implemented
+- [x] Accept-invitation screen — originally a blind accept form (see G1 note); **enriched 2026-07-18 (loose-ends pass):** new `GET /auth/invitations/:token` preview endpoint drives workspace/role/inviter display, invited-email display, and new-vs-existing branching per DRD §8.2; expired/invalid token states retained
 - [x] Password-reset request + confirm screens (confirm at `/reset-password?token=…` per the reset email)
 - [x] Form schemas via Zod (`apps/web/src/forms/schemas/index.ts`)
 - [x] Mutation hooks hydrate user cache + navigate (`useAuthSuccess`); shell route guard redirects unauthenticated users to `/login`
@@ -352,14 +352,14 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 - [x] Optimistic status update with rollback + error toast
 - [x] URL-driven filter + sort state
 - [x] Project Settings modal (Details + Access tabs, screen inventory §5.2)
-- [~] Mobile column stacking, status via dropdown — **deferred** with the rest of the responsive/mobile polish (see F4 note; DRD §15)
+- [x] Mobile column stacking, status via dropdown — **completed 2026-07-18 (loose-ends pass):** columns stack below `md`, DnD gated to `≥md` via `useMediaQuery`; mobile status changes go through the task panel's status dropdown (DRD §15.3's "dropdown, no DnD")
 - [x] Component + axe tests
 
 #### Phase G4 — List View `[x] Complete`
 - [x] Sortable columns (title, status, assignee, priority, due, labels) — sortable on the backend-supported keys (priority, due, assignee); title/status header sort not offered
 - [x] Inline status dropdown (role-gated)
 - [x] Shared filter/sort URL state with board view
-- [~] Mobile responsive (scroll or stacked) — **deferred** with the responsive/mobile polish (see F4 note)
+- [x] Mobile responsive (scroll or stacked) — **completed 2026-07-18 (loose-ends pass):** table scrolls horizontally in an `overflow-x-auto` wrapper (`min-w-[640px]`) instead of crushing cells
 - [x] Component + axe tests
 
 #### Phase G5 — Task Detail Panel `[x] Complete`
@@ -524,16 +524,75 @@ end-to-end "trivial change reaches the host + smoke passes" DoD is necessarily a
 These were surfaced during plan validation (§6.4 of the implementation plan). Resolve each before its consuming phase begins.
 
 - [x] **Open Item #1 (before C4):** Comment edit/delete scope — default decision is "author only". Record as ADR or confirm. **Resolved 2026-05-09 with [ADR 088](../technical/decisions/088-comment-edit-delete-scope.md): author-only edit/delete; admins/owners cannot mutate other users' comments.**
-- [ ] **Open Item #2 (before G8):** Email change in profile — default is "not exposed in v1". Confirm with PRD revision.
-- [ ] **Open Item #3 (before G8):** Last-used view per project storage — default is `localStorage`.
-- [ ] **Open Item #4 (before G3):** Project activity feed surface — default is side panel reachable from sub-nav. Confirm with design.
-- [ ] **Open Item #5 (before H2):** First-run prompt logic — default derives from workspace state (no backend flag). Confirm.
+- [x] **Open Item #2 (before G8):** Email change in profile — default is "not exposed in v1". **Resolved 2026-07-18: PRD §20.1 revised to state email is read-only in v1; revisit post-v1.**
+- [x] **Open Item #3 (before G8):** Last-used view per project storage — default is `localStorage`. **Resolved: shipped as designed in G8 (`lib/projectView`), no backend persistence.**
+- [x] **Open Item #4 (before G3):** Project activity feed surface — default is side panel reachable from sub-nav. **Resolved 2026-07-18: G3 had shipped without any project-scope activity UI (PRD §14.2 gap); the loose-ends pass built the default — `ProjectActivityPanel` slide-in reachable from a History icon in the project sub-nav, backed by `GET /activity?project_id=…`.**
+- [x] **Open Item #5 (before H2):** First-run prompt logic — default derives from workspace state (no backend flag). **Resolved: shipped as designed in H2 (client-side derivation, no backend flag).**
 
 ---
 
 ## Notes
 
 Use this section as a running log of decisions, blockers, or context that should persist across sessions.
+
+### 2026-07-18 — Pre-I4 loose-ends pass (CI unbroken + deferred items closed)
+
+A sweep of every tracked loose end before the I4 cutover. All verification green
+at the end: pytest 268 (98% coverage), vitest 195 (94.6%/82.7% coverage gates),
+`tsc -b`, Biome, and the Playwright suite 6/6 twice consecutively.
+
+**1. main CI diagnosed and fixed (red since ~2026-06-15, three separate causes —
+none of them the old Python failures, which `424204f` had already fixed):**
+- `web-tests`: pnpm on linux-x64 skipped `@rolldown/binding-linux-x64-gnu`
+  (libc-detection quirk; works on macOS). Fixed with `pnpm.supportedArchitectures`
+  (darwin/linux × x64/arm64 × glibc/musl) in root `package.json`.
+- `openapi-drift`: the lint-staged Biome hook had reformatted the *generated*
+  `packages/api-types/openapi.json`, so a fresh regen always diffed. Fixed by
+  excluding it in `biome.json` and recommitting raw generator output.
+- `e2e`: both Dockerfiles pinned `FROM --platform=linux/arm64` → `exec format
+  error` on amd64 runners. Pins removed — deploy.yml's buildx `platforms:
+  linux/arm64` remains the (only needed) ADR 038 enforcement point.
+
+**2. `build-images` CI job added (TDD §14.1, the I3 "adjacent" gap)** — and it
+immediately caught that the **prod web image had never been buildable**: corepack
+in `node:20.17-alpine` fails closed on npm's rotated signing keys, and the deps
+stage copied neither `pnpm-lock.yaml` nor the workspace member manifests (so
+`workspace:*` deps couldn't resolve). Rewrote `apps/web/Dockerfile` (direct pnpm
+install, full manifest set, frozen lockfile, `HUSKY=0`) and added a root
+`.dockerignore` (host `node_modules`/`.git`/venv were leaking into build
+contexts). Both images now build locally.
+
+**3. Invitation preview (G1 follow-up / DRD §8.2)** — new unauthenticated
+`GET /auth/invitations/{token}` (hash-lookup, invalid/accepted → `INVALID_TOKEN`,
+expired returned with `status: "expired"`, plus `existing_user` flag). Accept
+screen now shows workspace/inviter/role/email and branches new-vs-existing
+(existing accounts get a fields-free "Join {workspace}" button). 5 new backend
+integration tests + 7 screen tests; OpenAPI types regenerated.
+
+**4. @mention chips (G5 follow-up)** — resolved mentions in posted comments now
+render as teal chips. `lib/mentions.ts` hosts the shared handle format + a remark
+plugin that wraps matching `@handle` text nodes in sentinel link nodes (survives
+`rehype-sanitize`); the `Markdown` component renders them as chip spans. Word
+boundary rule mirrors the composer (emails never chip); code spans untouched.
+
+**5. Responsive/mobile polish (the F4/G3/G4 deferral, DRD §15)** — tablet icon
+rail active (768–1023px via new `useMediaQuery`), mobile hamburger→sidebar
+overlay in the header below `md`, board columns stack on mobile with DnD gated
+to desktop (mobile status changes via the task panel dropdown per DRD §15.3),
+list view scrolls horizontally in an overflow wrapper.
+
+**6. Open Items #2–#5 closed** (see the Open Items section): PRD §20.1 revised
+(email read-only in v1); #3/#5 confirmed as shipped; #4 resolved by building the
+**project activity side panel** (`ProjectActivityPanel` + History icon in the
+sub-nav, `GET /activity?project_id=…`) — closing a genuine PRD §14.2 gap where
+no project-scope activity UI existed at all.
+
+**Still open (cannot be closed from this machine):** the manual a11y checklist
+(`apps/web/docs/a11y-manual-checklist.md` — VoiceOver/keyboard/contrast passes
+need a human) and the D1 50-connection WS load smoke (deferred at D1, never
+picked up in E3 — do it before or during I4). E2E note: Journey 3 flaked twice
+on a cold stack (drag timing) before going green twice consecutively — watch it
+in CI; if it recurs, bump the drag helper's settle waits.
 
 ### 2026-06-28 — Phase I3 complete (CD Pipeline / `deploy.yml`)
 
@@ -603,6 +662,9 @@ ADRs 071/072/073/087 + TDD §14 surfaced five inconsistencies, all now resolved:
   only target per ADR 038).
 - *Adjacent, out of I3 scope (tracked separately):* `ci.yml` lacks the TDD §14.1
   `build-images` job, so a broken Dockerfile isn't caught until `deploy.yml` runs.
+  **Resolved 2026-07-18 (loose-ends pass): `build-images` job added — and it
+  immediately caught a real defect (the web image had never been buildable; see
+  the 2026-07-18 note).**
 
 **Carried to I4/I5 (unchanged):** the live stack apply + SSM secret population +
 Cloudflare/Resend dashboard config + cert placement + configuring the `production`
