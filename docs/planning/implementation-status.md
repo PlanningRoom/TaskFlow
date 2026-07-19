@@ -543,9 +543,16 @@ at the end: pytest 268 (98% coverage), vitest 195 (94.6%/82.7% coverage gates),
 
 **1. main CI diagnosed and fixed (red since ~2026-06-15, three separate causes —
 none of them the old Python failures, which `424204f` had already fixed):**
-- `web-tests`: pnpm on linux-x64 skipped `@rolldown/binding-linux-x64-gnu`
-  (libc-detection quirk; works on macOS). Fixed with `pnpm.supportedArchitectures`
-  (darwin/linux × x64/arm64 × glibc/musl) in root `package.json`.
+- `web-tests` (and, once added, `build-images`): pnpm skipped
+  `@rolldown/binding-linux-x64-gnu` on the runners. Root cause (found after a
+  first fix attempt): the rolldown bindings declare `engines: node ^20.19.0 ||
+  >=22.12.0` and **pnpm silently skips optional deps that fail the engines
+  check** — the repo pinned node 20.17 (the PR #19 Vite 8 bump never bumped
+  Node). Local machines (node 22.x) and the dev compose container (floating
+  `node:20-alpine` → 20.19+) masked it. Fixed by bumping node to 22.12 in
+  ci.yml + the web Dockerfile (dev compose → `node:22-alpine`, engines floor
+  `>=20.19.0`), plus pnpm 9.12.0 → 9.15.9 and `pnpm.supportedArchitectures`
+  as belt-and-braces. Verified in amd64 containers before pushing.
 - `openapi-drift`: the lint-staged Biome hook had reformatted the *generated*
   `packages/api-types/openapi.json`, so a fresh regen always diffed. Fixed by
   excluding it in `biome.json` and recommitting raw generator output.
