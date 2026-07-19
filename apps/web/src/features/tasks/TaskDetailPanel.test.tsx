@@ -37,9 +37,9 @@ const taskDetail: TaskDetail = {
 
 const comment: Comment = {
   id: 'c1',
-  body: 'First comment',
+  body: 'First comment for @bob',
   author: { id: 'u2', display_name: 'Bob', initials: 'B', avatar_color: 'sky', deleted: false },
-  mentions: [],
+  mentions: [{ id: 'u2', display_name: 'Bob', initials: 'B', avatar_color: 'sky', deleted: false }],
   created_at: '2026-06-02T10:00:00Z',
   updated_at: '2026-06-02T10:00:00Z',
 };
@@ -65,7 +65,11 @@ describe('TaskDetailPanel', () => {
     );
     await findByText('Fix the login bug');
     expect(getByText('Read the docs first')).toBeInTheDocument();
-    expect(getByText('First comment')).toBeInTheDocument();
+    expect(getByText(/First comment for/)).toBeInTheDocument();
+    // Resolved @mentions render as teal chips (spans, not links).
+    const chip = getByText('@bob');
+    expect(chip.tagName).toBe('SPAN');
+    expect(chip.className).toContain('text-primary');
     expect(getByText('To Do')).toBeInTheDocument();
     expect(await axe(container)).toHaveNoViolations();
   });

@@ -1,6 +1,7 @@
 import { type KeyboardEvent, useRef, useState } from 'react';
 import type { UserSummary } from '@/api/types';
 import { Avatar, Textarea } from '@/components/ui';
+import { mentionHandle } from '@/lib/mentions';
 
 /**
  * Comment textarea with @mention autocomplete (DRD §11.4). Typing `@` opens a
@@ -8,9 +9,7 @@ import { Avatar, Textarea } from '@/components/ui';
  * lowercased, spaces → hyphens — see services/mentions.py). Keyboard: ↑/↓ move,
  * Enter/Tab accept, Esc dismiss.
  */
-export function mentionHandle(displayName: string | null | undefined): string {
-  return (displayName ?? '').toLowerCase().trim().replace(/\s+/g, '-');
-}
+export { mentionHandle };
 
 const MENTION_RE = /(^|\s)@([A-Za-z0-9_-]*)$/;
 

@@ -1,7 +1,10 @@
-import ReactMarkdown, { type Components } from 'react-markdown';
+import { useMemo } from 'react';
+import ReactMarkdown, { type Components, type Options } from 'react-markdown';
 import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
+import type { UserSummary } from '@/api/types';
 import { cn } from '@/lib/cn';
+import { MENTION_URL, mentionHandle, remarkMentions } from '@/lib/mentions';
 
 /**
  * Safe Markdown renderer (ADR 060 / TDD §6.6) for task descriptions and
@@ -9,8 +12,8 @@ import { cn } from '@/lib/cn';
  * with a strict allowlist (no raw HTML/script), and every link forced to
  * `target="_blank"` + `rel="noopener noreferrer nofollow"`.
  *
- * `@handle` mentions render as plain text here; the comment list highlights
- * them around this component (the resolved members are on the DTO).
+ * Pass `mentions` (the DTO's resolved members) to render their `@handle`
+ * tokens as teal chips; without it, mentions stay plain text.
  */
 const schema = {
   ...defaultSchema,
@@ -21,19 +24,39 @@ const schema = {
 };
 
 const components: Components = {
-  a: ({ children, href }) => (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer nofollow"
-      className="text-primary underline"
-    >
-      {children}
-    </a>
-  ),
+  a: ({ children, href }) =>
+    href === MENTION_URL ? (
+      <span className="rounded bg-primary-light px-1 py-0.5 font-medium text-primary">
+        {children}
+      </span>
+    ) : (
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer nofollow"
+        className="text-primary underline"
+      >
+        {children}
+      </a>
+    ),
 };
 
-export function Markdown({ children, className }: { children: string; className?: string }) {
+export function Markdown({
+  children,
+  className,
+  mentions,
+}: {
+  children: string;
+  className?: string;
+  mentions?: UserSummary[];
+}) {
+  const remarkPlugins = useMemo<NonNullable<Options['remarkPlugins']>>(() => {
+    const handles = new Set(
+      (mentions ?? []).map((m) => mentionHandle(m.display_name)).filter(Boolean),
+    );
+    return handles.size > 0 ? [remarkGfm, [remarkMentions, { handles }]] : [remarkGfm];
+  }, [mentions]);
+
   return (
     <div
       className={cn(
@@ -42,7 +65,7 @@ export function Markdown({ children, className }: { children: string; className?
       )}
     >
       <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={remarkPlugins}
         rehypePlugins={[[rehypeSanitize, schema]]}
         components={components}
       >

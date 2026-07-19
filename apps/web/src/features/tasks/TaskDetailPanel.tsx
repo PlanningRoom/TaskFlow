@@ -369,7 +369,9 @@ function CommentItem({ comment }: { comment: Comment }) {
             {formatRelativeTime(comment.created_at)}
           </span>
         </div>
-        <Markdown className="mt-0.5">{comment.body}</Markdown>
+        <Markdown className="mt-0.5" mentions={comment.mentions}>
+          {comment.body}
+        </Markdown>
       </div>
     </li>
   );
