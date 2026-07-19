@@ -19,12 +19,12 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.12.0
+          version: 9.15.9
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.17'
+          node-version: '22.12'
           cache: pnpm
 
       - name: Install JS deps
@@ -63,12 +63,12 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.12.0
+          version: 9.15.9
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.17'
+          node-version: '22.12'
           cache: pnpm
 
       - name: Install JS deps
@@ -154,12 +154,12 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.12.0
+          version: 9.15.9
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.17'
+          node-version: '22.12'
           cache: pnpm
 
       - name: Install JS deps
@@ -244,12 +244,12 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.12.0
+          version: 9.15.9
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.17'
+          node-version: '22.12'
           cache: pnpm
 
       - name: Install JS deps
@@ -311,12 +311,12 @@ jobs:
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: 9.12.0
+          version: 9.15.9
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20.17'
+          node-version: '22.12'
           cache: pnpm
 
       - name: Install JS deps
