@@ -1,4 +1,5 @@
 import { within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { apiClient } from '@/api/client';
 import { axe } from '@/test/axe';
@@ -61,5 +62,38 @@ describe('AppShell', () => {
     );
     await findByLabelText('User menu');
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it('opens the mobile navigation overlay from the hamburger and closes on backdrop', async () => {
+    mockApi();
+    const { getByLabelText, queryByRole, getByRole, container } = renderWithProviders(
+      <AppShell breadcrumb={['Dashboard']}>
+        <p>Page body</p>
+      </AppShell>,
+    );
+    expect(queryByRole('dialog')).toBeNull();
+    await userEvent.click(getByLabelText('Open navigation'));
+    const overlay = getByRole('dialog', { name: 'Navigation' });
+    expect(within(overlay).getByText('Dashboard')).toBeInTheDocument();
+    expect(await axe(container)).toHaveNoViolations();
+    await userEvent.click(getByLabelText('Close navigation'));
+    expect(queryByRole('dialog')).toBeNull();
+  });
+
+  it('closes the mobile navigation on Escape and on link navigation', async () => {
+    mockApi();
+    const { getByLabelText, queryByRole, getByRole } = renderWithProviders(
+      <AppShell breadcrumb={['Dashboard']}>
+        <p>Page body</p>
+      </AppShell>,
+    );
+    await userEvent.click(getByLabelText('Open navigation'));
+    await userEvent.keyboard('{Escape}');
+    expect(queryByRole('dialog')).toBeNull();
+
+    await userEvent.click(getByLabelText('Open navigation'));
+    const overlay = getByRole('dialog', { name: 'Navigation' });
+    await userEvent.click(within(overlay).getByText('Notifications'));
+    expect(queryByRole('dialog')).toBeNull();
   });
 });

@@ -15,6 +15,7 @@ import { CreateTaskModal } from '@/features/tasks/CreateTaskModal';
 import type { TaskSearch } from '@/features/tasks/taskQueryState';
 import type { TaskQueryParams, TaskStatus } from '@/features/tasks/useTasks';
 import { useProjectTasks, useUpdateTaskStatus } from '@/features/tasks/useTasks';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { cn } from '@/lib/cn';
 import { TaskCard } from './TaskCard';
 
@@ -47,6 +48,9 @@ export function BoardView({
   const { data, isPending, isError } = useProjectTasks(projectId, params);
   const updateStatus = useUpdateTaskStatus(projectId);
   const canEdit = role !== 'viewer';
+  // DnD is desktop-only (DRD §15.3); on mobile the stacked columns rely on the
+  // task panel's status dropdown. jsdom (no matchMedia) keeps drag enabled.
+  const isDesktop = useMediaQuery('(min-width: 768px)', true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -114,13 +118,14 @@ export function BoardView({
 
   return (
     <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="flex h-full gap-4 p-6">
+      {/* Columns stack vertically on mobile (DRD §15.3), row + own scroll ≥md. */}
+      <div className="flex flex-col gap-4 p-4 md:h-full md:flex-row md:overflow-x-auto md:p-6">
         {columns.map((status) => (
           <BoardColumn
             key={status}
             status={status}
             tasks={byStatus(status)}
-            canDrag={canEdit}
+            canDrag={canEdit && isDesktop}
             onOpenTask={onOpenTask}
           />
         ))}
@@ -142,7 +147,7 @@ function BoardColumn({
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   return (
-    <div className="flex w-[280px] shrink-0 flex-col">
+    <div className="flex w-full shrink-0 flex-col md:w-[280px]">
       <div className="flex items-center gap-2 pb-2">
         <span className={cn('h-2.5 w-2.5 rounded-[3px]', STATUS_DOT[status])} aria-hidden />
         <span className="text-[13px] font-semibold text-text-primary">{STATUS_LABELS[status]}</span>

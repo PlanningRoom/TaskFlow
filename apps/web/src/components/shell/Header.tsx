@@ -8,7 +8,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/DropdownMenu';
-import { Bell } from '@/components/ui/icons';
+import { Bell, Menu } from '@/components/ui/icons';
 import { useLogout } from '@/features/auth/useLogout';
 import { useUnreadCount } from '@/features/notifications/useNotifications';
 import { SearchOverlay } from '@/features/search/SearchOverlay';
@@ -22,9 +22,11 @@ import { useCurrentUser } from '@/hooks/useCurrentUser';
 export interface HeaderProps {
   /** Breadcrumb segments; the last is the current page (rendered emphasized). */
   breadcrumb: string[];
+  /** Opens the mobile navigation overlay; the trigger renders below `md` only. */
+  onMenuClick?: () => void;
 }
 
-export function Header({ breadcrumb }: HeaderProps) {
+export function Header({ breadcrumb, onMenuClick }: HeaderProps) {
   const intl = useIntl();
   const navigate = useNavigate();
   const { data: user } = useCurrentUser();
@@ -33,7 +35,17 @@ export function Header({ breadcrumb }: HeaderProps) {
   const unreadCount = unread?.count ?? 0;
 
   return (
-    <header className="flex h-[52px] shrink-0 items-center gap-4 border-b border-border bg-bg-card px-6">
+    <header className="flex h-[52px] shrink-0 items-center gap-4 border-b border-border bg-bg-card px-4 md:px-6">
+      {onMenuClick ? (
+        <button
+          type="button"
+          onClick={onMenuClick}
+          className="grid h-[34px] w-[34px] shrink-0 place-items-center rounded-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary md:hidden"
+          aria-label="Open navigation"
+        >
+          <Menu size={19} strokeWidth={1.75} />
+        </button>
+      ) : null}
       <nav aria-label="Breadcrumb" className="flex items-center gap-1.5 text-[13px]">
         {breadcrumb.map((seg, i) => {
           const last = i === breadcrumb.length - 1;

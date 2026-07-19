@@ -91,33 +91,37 @@ export function ListView({
   );
 
   return (
-    <table className="w-full border-collapse text-[13px]">
-      <thead>
-        <tr className="border-b border-border text-start text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary">
-          <th className="px-6 py-2 text-start font-semibold">Title</th>
-          <th className="px-3 py-2 text-start font-semibold">Status</th>
-          <th className="px-3 py-2 text-start font-semibold">
-            {sortHeader('Assignee', 'assignee')}
-          </th>
-          <th className="px-3 py-2 text-start font-semibold">
-            {sortHeader('Priority', 'priority')}
-          </th>
-          <th className="px-3 py-2 text-start font-semibold">{sortHeader('Due', 'due_date')}</th>
-          <th className="px-3 py-2 text-start font-semibold">Labels</th>
-        </tr>
-      </thead>
-      <tbody>
-        {tasks.map((task) => (
-          <ListRow
-            key={task.id}
-            task={task}
-            canEdit={canEdit}
-            onOpen={() => onOpenTask(task.id)}
-            onStatusChange={(status) => updateStatus.mutate({ taskId: task.id, status })}
-          />
-        ))}
-      </tbody>
-    </table>
+    // Mobile (DRD §15.3): the table keeps its column layout and scrolls
+    // horizontally inside this wrapper rather than crushing the cells.
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[640px] border-collapse text-[13px]">
+        <thead>
+          <tr className="border-b border-border text-start text-[11px] font-semibold uppercase tracking-[0.03em] text-text-tertiary">
+            <th className="px-6 py-2 text-start font-semibold">Title</th>
+            <th className="px-3 py-2 text-start font-semibold">Status</th>
+            <th className="px-3 py-2 text-start font-semibold">
+              {sortHeader('Assignee', 'assignee')}
+            </th>
+            <th className="px-3 py-2 text-start font-semibold">
+              {sortHeader('Priority', 'priority')}
+            </th>
+            <th className="px-3 py-2 text-start font-semibold">{sortHeader('Due', 'due_date')}</th>
+            <th className="px-3 py-2 text-start font-semibold">Labels</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.map((task) => (
+            <ListRow
+              key={task.id}
+              task={task}
+              canEdit={canEdit}
+              onOpen={() => onOpenTask(task.id)}
+              onStatusChange={(status) => updateStatus.mutate({ taskId: task.id, status })}
+            />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
