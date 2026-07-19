@@ -1,7 +1,7 @@
 # TaskFlow — Implementation Status
 
 **Last Updated:** 2026-07-19
-**Current Phase:** Part I — I1 + I2 + I3 complete; **I4 + I5 permanently out of scope** (2026-07-19: TaskFlow is a demonstration project — no production cutover; see Notes). I6 (Final Acceptance) is next, reframed against the local docker compose stack.
+**Current Phase:** **Complete.** All in-scope phases done as of 2026-07-19 (I4 + I5 permanently out of scope — demonstration project, no production cutover; see Notes). Acceptance: [i6-acceptance-report.md](./i6-acceptance-report.md) · Release note: [release-note.md](./release-note.md).
 **Plan:** [implementation-plan.md](./implementation-plan.md)
 
 ---
@@ -56,10 +56,10 @@ Decided 2026-05-16. Applies until launch; revisit in operate mode.
 | F | Frontend Foundation | 4 | 4 | 0 | 0 |
 | G | Frontend Screens | 8 | 8 | 0 | 0 |
 | H | Frontend Cross-Cutting | 5 | 5 | 0 | 0 |
-| I | E2E, Infra, Deploy | 6 | 3 | 0 | 0 |
-| **Total** | | **42** | **39** | **0** | **0** |
+| I | E2E, Infra, Deploy | 6 | 4 | 0 | 0 |
+| **Total** | | **42** | **40** | **0** | **0** |
 
-Of the 3 remaining Part I phases, **I4 and I5 are permanently out of scope** (demonstration project, no production deployment — decided 2026-07-19, see Notes). The only remaining in-scope phase is **I6**, run against the local docker compose stack. In-scope total: **39 of 40 complete**.
+**The build is complete.** All 40 in-scope phases are done; I4 and I5 are permanently out of scope (demonstration project, no production deployment — decided 2026-07-19, see Notes). Final acceptance: [i6-acceptance-report.md](./i6-acceptance-report.md) · what shipped: [release-note.md](./release-note.md).
 
 ---
 
@@ -227,7 +227,7 @@ Of the 3 remaining Part I phases, **I4 and I5 are permanently out of scope** (de
 - [x] Wire publishing into all C-phase service mutations
 - [x] Integration WS tests (mutate via API, assert receipt)
 - [x] Cross-workspace leakage tests
-- [ ] 50-connection load smoke — deferred to E3 (test-completion phase)
+- [-] 50-connection load smoke — deferred to E3, then attempted in the I6 pass (2026-07-19): blocked by dev-stack WebSocket instability; skipped per user (see the WS observation in the 2026-07-19 acceptance Note)
 
 #### Phase D2 — Background Jobs and Email `[x] Complete`
 - [x] APScheduler jobs (invitation expire, session cleanup, password-reset cleanup, pg_dump)
@@ -518,17 +518,17 @@ end-to-end "trivial change reaches the host + smoke passes" DoD is necessarily a
 - [-] Metric filter regexes verified against real log lines
 - [-] Runbook updated
 
-#### Phase I6 — Final Acceptance and Documentation `[ ] Not started`
+#### Phase I6 — Final Acceptance and Documentation `[x] Complete`
 
 **Reframed 2026-07-19:** with I4/I5 out of scope, acceptance runs against the local docker compose stack (seeded), not a live deployment.
 
-- [ ] PRD walkthrough against the local docker compose stack
-- [ ] DRD page-spec walkthrough
-- [ ] All empty states verified
-- [ ] `README.md` updated (run, seed; deploy section reframed as reference-only)
-- [ ] This status file marked complete (all in-scope phases)
-- [ ] Release note authored
-- [ ] Carried-over pre-launch loose ends dispositioned: D1 50-connection WS load smoke (runnable locally), manual a11y checklist (`apps/web/docs/a11y-manual-checklist.md`)
+- [x] PRD walkthrough against the local docker compose stack — see [i6-acceptance-report.md](./i6-acceptance-report.md) (all suites green first: pytest 268, vitest 195, Playwright 6/6 twice; 29-screenshot browser walkthrough across owner/viewer/fresh-workspace × desktop/tablet/mobile)
+- [x] DRD page-spec walkthrough — report §3; all pages match, two deviations recorded (activity copy F2, mobile section order F3)
+- [x] All empty states verified — report §4; full DRD §16 table confirmed incl. role-aware variants and first-run prompts
+- [x] `README.md` updated — build marked complete, quickstart + seed refreshed (node 22.12, e2e targets, `make test` db-container caveat), "Deployment (reference only)" section added
+- [x] This status file marked complete (all in-scope phases) — 2026-07-19
+- [x] Release note authored — [release-note.md](./release-note.md)
+- [x] Carried-over pre-launch loose ends dispositioned — **D1 WS load smoke attempted, blocked by dev-stack WebSocket instability (see the WS observation in the 2026-07-19 acceptance Note), further investigation skipped per user**; manual a11y checklist stays open as the documented human pass (not automatable — report §6)
 
 ---
 
@@ -547,6 +547,41 @@ These were surfaced during plan validation (§6.4 of the implementation plan). R
 ## Notes
 
 Use this section as a running log of decisions, blockers, or context that should persist across sessions.
+
+### 2026-07-19 — I6 acceptance pass (phase completed same day)
+
+Ran the reframed I6 acceptance against the local compose stack. Full detail in
+[i6-acceptance-report.md](./i6-acceptance-report.md); summary:
+
+- **Baseline:** pytest 268 green, vitest 195 green (94.6%/82.7%), Playwright
+  6/6 **after** fixing Journey 3's tracked drag flake — `e2e/helpers/dnd.ts`
+  now waits 150 ms post-activation and pre-release (the 07-18 note's
+  prescribed remedy); green twice consecutively.
+- **PRD/DRD walkthroughs + empty states:** 29-screenshot scripted browser pass
+  (owner / viewer / fresh-workspace × desktop / tablet / mobile). Everything
+  matches spec except the report's findings: **F1** activity entries don't name
+  the task for moved/commented events and leak raw status keys
+  ("in_progress"); **F2** mobile dashboard stacks Recent Activity before
+  Projects (DRD §15.3 says Projects first). Both non-blocking.
+- **WS observation (not tracked as an acceptance finding):** during the pass,
+  dev-stack WebSockets died within ~1–2s of opening (abrupt, no close frame;
+  "Reconnecting…" pill visible), initially alongside a 1/s reconnect loop from
+  a stale owner-session browser client. Re-tested after that client
+  disappeared: idle sockets still dropped, so the loop wasn't the cause.
+  `ws.py` swallows subscribe-task failures as ordinary disconnects, so logs
+  show nothing. E2E realtime passes regardless (events arrive fast + client
+  reconnects with invalidation). The deferred D1 load smoke was attempted but
+  blocked by this; deeper investigation skipped per user 2026-07-19 and the
+  finding was removed from the acceptance report per user review.
+- **F5 (dev footgun):** running the backend test compose while the dev stack is
+  up replaces the dev `db` container (same compose project) — API then fails
+  with `database "taskflow" does not exist`. Recover with
+  `docker compose up -d db && docker compose restart api`; consider `-p
+  taskflow-test` isolation.
+- **Same-day completion:** Journey 3 drag fix (`e2e/helpers/dnd.ts` settle
+  waits), README refreshed (build complete, node 22.12, e2e targets, `make
+  test` caveat, reference-only Deployment section), release note authored
+  ([release-note.md](./release-note.md)), and this file marked complete.
 
 ### 2026-07-19 — I4/I5 permanently out of scope; deploy.yml is dispatch-only
 

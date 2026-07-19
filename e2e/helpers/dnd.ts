@@ -19,7 +19,9 @@ export async function dragTo(page: Page, source: Locator, target: Locator): Prom
   await page.mouse.move(sx, sy);
   await page.mouse.down();
   await page.mouse.move(sx + 8, sy + 8, { steps: 6 }); // exceed the 5px activation distance
+  await page.waitForTimeout(150); // let dnd-kit activate the drag and measure droppables
   await page.mouse.move(tx, ty, { steps: 12 });
   await page.mouse.move(tx, ty + 4, { steps: 4 }); // settle over the droppable
+  await page.waitForTimeout(150); // let collision detection register the drop target
   await page.mouse.up();
 }

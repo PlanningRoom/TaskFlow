@@ -38,12 +38,12 @@ Throughout this series, I build a task management app called **TaskFlow** using 
 
 ## Building TaskFlow Locally
 
-TaskFlow is a workspace task-management application built across the YouTube series. The build follows the plan in [docs/planning/implementation-plan.md](docs/planning/implementation-plan.md); progress is tracked in [docs/planning/implementation-status.md](docs/planning/implementation-status.md).
+TaskFlow is a workspace task-management application built across the YouTube series. The build followed the plan in [docs/planning/implementation-plan.md](docs/planning/implementation-plan.md) and is **complete** — all in-scope phases are done ([docs/planning/implementation-status.md](docs/planning/implementation-status.md)), with final acceptance recorded in [docs/planning/i6-acceptance-report.md](docs/planning/i6-acceptance-report.md) and a summary of what shipped in [docs/planning/release-note.md](docs/planning/release-note.md).
 
 ### Prerequisites
 
 - Docker Desktop (or compatible engine) with `docker compose`
-- Node.js 20.17+ (or 22+ recommended) and `pnpm` 9+ (`corepack enable && corepack prepare pnpm@latest --activate`)
+- Node.js 22.12+ and `pnpm` 9+ (`corepack enable && corepack prepare pnpm@latest --activate`)
 - Python 3.12+ (only required for native iteration outside Docker)
 
 ### Quickstart
@@ -52,6 +52,8 @@ TaskFlow is a workspace task-management application built across the YouTube ser
 cp .env.example .env.local
 pnpm install
 make dev
+# in a second terminal, load the demo workspace:
+make seed
 ```
 
 `make dev` starts Postgres, MailHog, the FastAPI API, and the Vite dev server. Useful URLs:
@@ -66,11 +68,15 @@ make dev
 |---------|--------------|
 | `make dev` | Start the dev stack |
 | `make down` | Stop and remove containers |
-| `make migrate` | Run Alembic `upgrade head` (once Phase B2 lands) |
-| `make seed` | Load the "Aurora Studio" seed data (Phase E4) |
+| `make migrate` | Run Alembic `upgrade head` (also runs automatically on API startup) |
+| `make seed` | Load the "Aurora Studio" seed data (idempotent) |
 | `make lint` | Biome (TS/JS) + Ruff (Python) |
 | `make typecheck` | `tsc -b` + `mypy` |
 | `make test` | Backend + frontend unit / integration tests |
+| `make e2e-up` | Boot the full stack detached, wait for health, seed |
+| `make e2e` | Run the Playwright end-to-end suite against the running stack |
+
+> **Note:** `make test` runs the backend suite via `docker-compose.test.yml`, which reuses the same compose project as the dev stack and temporarily replaces the `db` container. If the dev stack was running, restore it afterwards with `docker compose up -d db && docker compose restart api` (dev data lives in a named volume and survives).
 
 Pre-commit hooks (`pre-commit install`) run Biome, Ruff, and a secret scan on staged files.
 
@@ -88,7 +94,16 @@ Pre-commit hooks (`pre-commit install`) run Biome, Ruff, and a secret scan on st
 
 Password for all five: `correct-horse-battery-staple`.
 
+### Deployment (reference only)
 
+TaskFlow is a demonstration project and is **not deployed anywhere** — the production cutover phases were permanently descoped (see the 2026-07-19 note in the [implementation status](docs/planning/implementation-status.md)). The deployment artifacts remain in the repo as statically validated reference material:
+
+- `infra/cloudformation/` — seven CloudFormation templates (VPC, EC2 compute, ECR, S3, SSM/KMS parameters, CloudWatch monitoring, GitHub OIDC + IAM), all `cfn-lint` clean in CI
+- `.github/workflows/deploy.yml` — the CD pipeline (build arm64 images → ECR, CloudFormation reconcile, SSM-driven roll with migrate-before-roll and a health smoke check). Trigger is `workflow_dispatch` only; it is never run automatically
+- `docs/runbooks/deploy.md` — the operator runbook the pipeline pairs with
+- `docker-compose.prod.yml` + `infra/nginx/nginx.conf` — the production topology (nginx TLS termination with a Cloudflare Origin CA cert, api, web, db)
+
+Everything the app needs runs locally: email lands in MailHog, real-time uses the Postgres-backed broadcaster, and the E2E suite exercises the full compose stack.
 
 ## YouTube Series
 
@@ -112,7 +127,7 @@ Watch the full series on YouTube to see the methodology in action.
 | 14 | Build Part 7 | [Watch](https://youtu.be/WzzKEX867mM) |
 | 15 | Build Part 8 | [Watch](https://youtu.be/ZfQ8UJxheE0) |
 | 16 | Deployment Part 1 | [Watch](https://youtu.be/Z3wiAPSLyFo) |
-| 17 | *Coming Soon* |  |
+| 17 | Deployment Part 2 | [Watch](https://youtu.be/MK_C9_9KjtQ) |
 
 ## Learn More
 
